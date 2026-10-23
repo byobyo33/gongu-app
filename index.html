@@ -1389,7 +1389,7 @@ function membersCard() {
   return `<section class="card" style="display:grid;gap:10px">
     <b>함께 쓰는 사람</b>
     <div class="sheetlist">${members.map(m => row(esc(m), !isAnon() && m === myEmail(), 'uninvite', m)).join('')}${uids.map(u => row('📱 ' + esc(names[u] || '초대번호 기기'), isAnon() && u === S.user.uid, 'uninviteUid', u)).join('')}</div>
-    <div class="ai"><b>사장님처럼 구글 로그인이 어려운 분</b>은 초대번호로 들어오면 돼요. 번호는 24시간 동안 쓸 수 있어요.</div>
+    <div class="small muted">초대번호를 만들어 보내면 구글 로그인 없이 번호만 넣고 들어올 수 있어요. 번호는 24시간 동안 쓸 수 있어요.</div>
     ${S.code ? `<div style="text-align:center;font-size:40px;font-weight:800;letter-spacing:.15em;color:var(--accent)">${esc(S.code)}</div><button class="btn" data-act="copyCode">초대번호와 앱 주소 복사</button>` : '<button class="bigbtn" data-act="makeCode">초대번호 만들기</button>'}
     <details><summary>구글 이메일로 초대하기</summary><div style="display:grid;gap:8px;margin-top:8px">
       <label class="field">초대할 사람의 구글 이메일<input id="invEmail" type="email" inputmode="email" autocomplete="off" placeholder="example@gmail.com"></label>
