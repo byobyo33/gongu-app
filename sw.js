@@ -1,5 +1,5 @@
 // 공구장부 서비스워커: 앱 화면 저장(오프라인) + 카톡 공유 받기
-const SHELL = 'gongu-shell-v2';
+const SHELL = 'gongu-shell-v3';
 const FILES = ['./', './index.html', './manifest.webmanifest', './firebase-config.js', './icon-192.png', './icon-512.png'];
 
 self.addEventListener('install', e => { e.waitUntil(caches.open(SHELL).then(c => c.addAll(FILES)).then(() => self.skipWaiting())); });
@@ -28,7 +28,8 @@ self.addEventListener('fetch', e => {
   if (req.method !== 'GET') return;
   // 같은 주소의 앱 파일: 인터넷 우선, 끊기면 저장본
   if (url.origin === self.location.origin) {
-    e.respondWith(fetch(req, { cache: 'no-cache' }).then(r => { // 항상 서버에 새 버전 확인 if (r.ok) { const cp = r.clone(); caches.open(SHELL).then(c => c.put(req, cp)); } return r; })
+    // 항상 서버에 새 버전 확인
+    e.respondWith(fetch(req, { cache: 'no-cache' }).then(r => { if (r.ok) { const cp = r.clone(); caches.open(SHELL).then(c => c.put(req, cp)); } return r; })
       .catch(() => caches.match(req, { ignoreSearch: true }).then(r => r || caches.match('./index.html'))));
     return;
   }
