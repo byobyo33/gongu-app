@@ -1,6 +1,6 @@
 // 공구장부 서비스워커: 앱 화면 저장(오프라인) + 카톡 공유 받기
-const SHELL = 'gongu-shell-v3';
-const FILES = ['./', './index.html', './manifest.webmanifest', './firebase-config.js', './icon-192.png', './icon-512.png'];
+const SHELL = 'gongu-shell-v4';
+const FILES = ['./', './index.html', './manifest.webmanifest', './firebase-config.js?v=2', './icon-192.png', './icon-512.png'];
 
 self.addEventListener('install', e => { e.waitUntil(caches.open(SHELL).then(c => c.addAll(FILES)).then(() => self.skipWaiting())); });
 self.addEventListener('activate', e => {
