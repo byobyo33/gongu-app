@@ -1,0 +1,27 @@
+{
+  "name": "공구장부",
+  "short_name": "공구장부",
+  "description": "카톡 오픈채팅 공동구매 주문을 손님 번호별로 정리하고 입금·수령을 함께 관리해요",
+  "lang": "ko",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#f2f7fd",
+  "theme_color": "#0b5fcc",
+  "icons": [
+    { "src": "icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "icon-maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ],
+  "share_target": {
+    "action": "./share-target",
+    "method": "POST",
+    "enctype": "multipart/form-data",
+    "params": {
+      "title": "title",
+      "text": "text",
+      "files": [{ "name": "chat", "accept": ["text/plain", ".txt", "text/*"] }]
+    }
+  }
+}

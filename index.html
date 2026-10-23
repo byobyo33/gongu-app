@@ -1,0 +1,1386 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#0b5fcc">
+<meta name="mobile-web-app-capable" content="yes">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icon-192.png">
+<link rel="apple-touch-icon" href="icon-192.png">
+<title>공구장부</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700;800&display=swap">
+<style>
+/* 레이아웃: 휴대폰 한 손 조작용 단일 열 장부. 파란 머리띠 + 흰 바탕, 글자는 크고 단순하게. */
+:root {
+  --head: #0b5fcc; --head-ink: #ffffff; --head-muted: #cfe2fb;
+  --paper: #f2f7fd; --card: #ffffff; --ink: #0b1a2e; --muted: #3c4f66; --line: #d5e2f0; --soft: #eaf2fb;
+  --accent: #0b5fcc; --accent-ink: #ffffff; --accent-soft: #e2eefc;
+  --tag: #dcecff; --tag-ink: #0849a3;
+  --warn: #b34a00; --warn-soft: #fff0e2; --ok: #137a3f; --ok-soft: #e1f4e8; --danger: #c0261c;
+  --f-display: "Noto Sans KR", "Apple SD Gothic Neo", "Malgun Gothic", system-ui, sans-serif;
+  --f-body: "Noto Sans KR", "Apple SD Gothic Neo", "Malgun Gothic", system-ui, sans-serif;
+  --f-num: "Noto Sans KR", "Apple SD Gothic Neo", "Malgun Gothic", system-ui, sans-serif;
+  --r: 14px;
+}
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
+  --head: #0f2c52; --head-ink: #ffffff; --head-muted: #a9c4e6;
+  --paper: #0a1422; --card: #112036; --ink: #e9f1fb; --muted: #a2b5cc; --line: #23395a; --soft: #172b47;
+  --accent: #5ba8ff; --accent-ink: #04162d; --accent-soft: #16345a;
+  --tag: #1b3d66; --tag-ink: #d3e8ff;
+  --warn: #ffb36b; --warn-soft: #3a2614; --ok: #6fd39a; --ok-soft: #133524; --danger: #ff8c82; color-scheme: dark; } }
+:root[data-theme="dark"] {
+  --head: #0f2c52; --head-ink: #ffffff; --head-muted: #a9c4e6;
+  --paper: #0a1422; --card: #112036; --ink: #e9f1fb; --muted: #a2b5cc; --line: #23395a; --soft: #172b47;
+  --accent: #5ba8ff; --accent-ink: #04162d; --accent-soft: #16345a;
+  --tag: #1b3d66; --tag-ink: #d3e8ff;
+  --warn: #ffb36b; --warn-soft: #3a2614; --ok: #6fd39a; --ok-soft: #133524; --danger: #ff8c82; color-scheme: dark; }
+
+* { box-sizing: border-box; }
+:root { padding-top: env(safe-area-inset-top, 0px); padding-bottom: env(safe-area-inset-bottom, 0px); }
+html, body { margin: 0; -webkit-text-size-adjust: 100%; }
+[hidden] { display: none !important; }
+img { max-width: 100%; }
+body { background: var(--paper); color: var(--ink); font-family: var(--f-body); font-size: 16px; line-height: 1.55; }
+body::before { content: ""; position: fixed; inset: 0 0 auto; height: env(safe-area-inset-top, 0px); z-index: 30; background: var(--head); }
+button, input, select, textarea { font: inherit; color: inherit; }
+button { cursor: pointer; }
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.num { font-family: var(--f-num); font-variant-numeric: tabular-nums; }
+body { font-variant-numeric: tabular-nums; }
+main, .sheet { zoom: var(--z, 1); }
+.sizebtn { border: 1.5px solid var(--head-muted); background: transparent; color: var(--head-ink); border-radius: 10px; padding: 4px 10px; font-weight: 800; font-size: 15px; min-height: 36px; white-space: nowrap; }
+.pick-in { width: 100%; font-size: 40px; font-weight: 800; text-align: center; letter-spacing: .12em; border: 3px solid var(--accent); border-radius: 16px; padding: 10px; background: var(--card); color: var(--ink); }
+.pick-in::placeholder { font-size: 20px; letter-spacing: 0; font-weight: 500; color: var(--muted); }
+.keypad { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+.keypad button { font-size: 28px; font-weight: 800; min-height: 60px; border-radius: 14px; border: 1.5px solid var(--line); background: var(--card); color: var(--ink); }
+.keypad button.fn { font-size: 18px; background: var(--soft); }
+.who-big { display: flex; align-items: baseline; gap: 12px; flex-wrap: wrap; }
+.who-big .key { font-size: 44px; font-weight: 800; color: var(--accent); line-height: 1; }
+.who-big .nm { font-size: 18px; color: var(--muted); }
+.pitem { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 6px 12px; align-items: center; padding: 14px 0; border-top: 1px solid var(--line); }
+.pitem .pn { font-size: 16px; color: var(--muted); }
+.pitem .pq { font-size: 26px; font-weight: 800; line-height: 1.25; }
+.pitem.done .pq { color: var(--muted); text-decoration: line-through; }
+.bigbtn { min-height: 56px; font-size: 18px; border-radius: 14px; padding: 8px 18px; font-weight: 800; border: 0; background: var(--accent); color: var(--accent-ink); }
+.bigbtn.done { background: var(--ok-soft); color: var(--ok); }
+.money { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; padding: 12px 14px; border-radius: 12px; background: var(--warn-soft); color: var(--warn); font-weight: 800; }
+.money b { font-size: 28px; }
+.money.ok { background: var(--ok-soft); color: var(--ok); }
+.cands { display: flex; flex-wrap: wrap; gap: 8px; }
+.cands button { font-size: 20px; font-weight: 800; padding: 8px 14px; border-radius: 12px; border: 1.5px solid var(--line); background: var(--card); color: var(--ink); }
+.cands small { display: block; font-size: 12px; font-weight: 500; color: var(--muted); }
+.sumbar { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
+.sum { border: 1.5px solid var(--line); background: var(--card); border-radius: 14px; padding: 10px 8px; display: grid; gap: 2px; text-align: center; color: var(--ink); min-width: 0; }
+.sum b { font-size: 24px; font-weight: 800; line-height: 1.2; }
+.sum span { font-size: 13px; color: var(--muted); overflow-wrap: anywhere; }
+.sum.warn { border-color: transparent; background: var(--warn-soft); } .sum.warn b { color: var(--warn); }
+.sum.acc { border-color: transparent; background: var(--accent-soft); } .sum.acc b { color: var(--accent); }
+.toast button { margin-left: 12px; background: none; border: 0; color: var(--head-muted); font-weight: 800; text-decoration: underline; }
+
+.top { position: sticky; top: env(safe-area-inset-top, 0px); z-index: 20; background: var(--head); color: var(--head-ink); }
+.top-in { max-width: 760px; margin: 0 auto; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); padding-block: 12px 0; }
+.brand { display: flex; align-items: center; gap: 10px; justify-content: space-between; }
+.brand h1 { margin: 0; font-weight: 800; font-size: 21px; line-height: 1.2; }
+.brand small { display: block; color: var(--head-muted); font-size: 12px; margin-top: 2px; }
+.sync { font-size: 12px; color: var(--head-muted); display: flex; align-items: center; gap: 6px; white-space: nowrap; }
+.dot { width: 8px; height: 8px; border-radius: 50%; background: var(--head-muted); }
+.dot.on { background: #7ee2a8; }
+.tabs { display: flex; gap: 2px; margin-top: 10px; overflow-x: auto; scrollbar-width: none; }
+.tabs button { flex: 1 0 auto; border: 0; background: none; padding: 10px 12px 11px; font-weight: 700; font-size: 16px; color: var(--head-muted); border-bottom: 3px solid transparent; display: inline-flex; gap: 6px; align-items: center; justify-content: center; }
+.tabs button[aria-selected="true"] { color: var(--head-ink); border-bottom-color: var(--head-ink); }
+.badge { font-size: 12px; font-weight: 700; min-width: 20px; padding: 1px 7px; border-radius: 99px; background: #ff7a45; color: #ffffff; }
+
+main { max-width: 760px; margin: 0 auto; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); padding-block: 16px 64px; display: grid; gap: 14px; }
+.card { background: var(--card); border: 1px solid var(--line); border-radius: var(--r); padding: 14px; min-width: 0; }
+.row { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+.grow { flex: 1 1 auto; min-width: 0; }
+.muted { color: var(--muted); }
+.small { font-size: 13px; }
+h2 { font-size: 13px; letter-spacing: .06em; color: var(--muted); margin: 6px 2px -4px; font-weight: 600; }
+
+.btn { border: 1px solid var(--line); background: var(--card); border-radius: 12px; padding: 10px 16px; font-weight: 700; display: inline-flex; gap: 6px; align-items: center; justify-content: center; min-height: 46px; }
+.btn.pri { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); }
+.btn.ghost { border-color: transparent; background: var(--soft); }
+.btn.warn { color: var(--danger); }
+.btn[disabled] { opacity: .5; cursor: default; }
+.btn.sm { min-height: 32px; padding: 5px 10px; font-size: 13px; }
+
+.tag { font-weight: 800; background: var(--tag); color: var(--tag-ink); padding: 3px 10px; border-radius: 8px; font-size: 16px; letter-spacing: .03em; white-space: nowrap; min-width: 60px; text-align: center; }
+.chip { font-size: 13px; font-weight: 500; padding: 3px 10px; border-radius: 99px; background: var(--soft); color: var(--muted); white-space: nowrap; }
+.chip.warn { background: var(--warn-soft); color: var(--warn); }
+.chip.ok { background: var(--ok-soft); color: var(--ok); }
+.chip.acc { background: var(--accent-soft); color: var(--accent); }
+
+/* 공구 카드 */
+.prod { display: grid; gap: 10px; text-align: left; width: 100%; color: inherit; font: inherit; }
+button.prod { background: var(--card); border: 1px solid var(--line); border-radius: var(--r); padding: 14px; }
+.pname { font-weight: 800; font-size: 19px; line-height: 1.2; text-wrap: balance; }
+.facts { display: flex; flex-wrap: wrap; gap: 4px 14px; font-size: 14px; color: var(--muted); }
+.facts b { color: var(--ink); font-weight: 600; }
+.tot { display: flex; gap: 8px; flex-wrap: wrap; }
+.tot span { background: var(--soft); border-radius: 10px; padding: 5px 12px; font-size: 14px; }
+.tot b { font-size: 16px; font-weight: 800; }
+
+/* 주문표 */
+.sheetlist { display: grid; }
+.orow { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; gap: 4px 12px; align-items: center; padding: 11px 2px; border-top: 1px solid var(--line); }
+.orow:first-child { border-top: 0; }
+.orow .who { min-width: 0; }
+.orow .nick { font-size: 13px; color: var(--muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.orow .items { font-weight: 700; font-size: 17px; }
+.orow .amt { font-size: 14px; color: var(--muted); text-align: right; }
+.orow .acts { grid-column: 1 / -1; display: flex; gap: 6px; flex-wrap: wrap; align-items: center; }
+.tog { border: 1.5px solid var(--line); background: var(--card); border-radius: 99px; padding: 6px 16px; font-size: 14px; font-weight: 700; color: var(--muted); min-height: 36px; }
+.tog[aria-pressed="true"]::before { content: "✓ "; }
+.tog[aria-pressed="true"] { background: var(--ok-soft); border-color: transparent; color: var(--ok); }
+.linkish { border: 0; background: none; padding: 0; color: var(--accent); font-weight: 600; font-size: 13px; }
+
+.search { width: 100%; border: 1px solid var(--line); background: var(--card); border-radius: 10px; padding: 10px 12px; }
+.empty { text-align: center; padding: 28px 16px; color: var(--muted); }
+.empty .pname { color: var(--ink); margin-bottom: 6px; }
+.steps { display: grid; gap: 8px; margin: 14px auto 0; max-width: 420px; text-align: left; }
+.steps li { margin-left: 18px; }
+
+.raw { white-space: pre-wrap; background: var(--soft); border-radius: 8px; padding: 8px 10px; font-size: 14px; overflow-wrap: anywhere; }
+.field { display: grid; gap: 4px; font-size: 13px; color: var(--muted); min-width: 0; }
+.field input, .field select, .field textarea { border: 1px solid var(--line); background: var(--card); border-radius: 8px; padding: 8px 10px; color: var(--ink); font-size: 15px; min-width: 0; width: 100%; }
+.qtys { display: grid; grid-template-columns: repeat(auto-fill, minmax(110px, 1fr)); gap: 8px; }
+.ai { border-left: 3px solid var(--accent); background: var(--accent-soft); padding: 8px 10px; border-radius: 0 8px 8px 0; font-size: 14px; }
+
+.drop { border: 2px dashed var(--line); border-radius: var(--r); padding: 22px 14px; text-align: center; background: var(--card); }
+.drop.over { border-color: var(--accent); background: var(--accent-soft); }
+textarea.paste { width: 100%; min-height: 110px; border: 1px solid var(--line); border-radius: 10px; background: var(--card); padding: 10px; resize: vertical; }
+.stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 8px; }
+.stat { background: var(--soft); border-radius: 10px; padding: 10px 12px; }
+.stat b { display: block; font-size: 24px; font-weight: 800; }
+.stat span { font-size: 12px; color: var(--muted); }
+details summary { cursor: pointer; font-weight: 600; }
+
+/* 하단 시트 */
+.scrim { position: fixed; inset: 0; background: rgba(0,0,0,.35); z-index: 40; display: flex; align-items: flex-end; justify-content: center; }
+.sheet { background: var(--card); width: 100%; max-width: 640px; max-height: 88%; overflow: auto; border-radius: 16px 16px 0 0; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); padding-top: 16px; padding-bottom: calc(18px + env(safe-area-inset-bottom, 0px)); display: grid; gap: 12px; }
+.sheet h3 { margin: 0; font-weight: 800; font-size: 20px; }
+.toast { position: fixed; left: 50%; transform: translateX(-50%); bottom: calc(20px + env(safe-area-inset-bottom, 0px)); background: var(--ink); color: var(--paper); padding: 10px 16px; border-radius: 99px; z-index: 60; font-size: 14px; max-width: calc(100% - 32px); }
+.hist { display: grid; gap: 6px; font-size: 13px; }
+.hist div { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 8px; }
+@media (prefers-reduced-motion: no-preference) { .sheet { animation: up .18s ease-out; } @keyframes up { from { transform: translateY(24px); opacity: .6; } } }
+</style>
+</head>
+<body>
+
+<header class="top">
+  <div class="top-in">
+    <div class="brand">
+      <div><h1 id="storeName">공구장부</h1><small id="storeSub">카톡 오픈채팅 공동구매 · 손님 관리</small></div>
+      <div class="row" style="gap:10px;flex-wrap:nowrap"><div class="sync" id="sync"><span class="dot"></span><span>연결 중</span></div><button class="sizebtn" id="sizeBtn" aria-label="글자 크기 바꾸기">가 크게</button></div>
+    </div>
+    <nav class="tabs" role="tablist" id="tabs">
+      <button role="tab" data-tab="pick" aria-selected="true">수령</button>
+      <button role="tab" data-tab="gongu">공구</button>
+      <button role="tab" data-tab="cust">손님</button>
+      <button role="tab" data-tab="review">확인 <span class="badge" id="revBadge" hidden>0</span></button>
+      <button role="tab" data-tab="import">가져오기</button>
+    </nav>
+  </div>
+</header>
+<main id="main"></main>
+<div id="layer"></div>
+
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+<script src="firebase-config.js"></script>
+<script>
+// ===== 카톡 내보내기 해석기 =====
+const KP = (() => {
+  const hash = (str, seed = 7) => {
+    let h1 = 0xdeadbeef ^ seed, h2 = 0x41c6ce57 ^ seed;
+    for (let i = 0; i < str.length; i++) { const c = str.charCodeAt(i); h1 = Math.imul(h1 ^ c, 2654435761); h2 = Math.imul(h2 ^ c, 1597334677); }
+    h1 = Math.imul(h1 ^ (h1 >>> 16), 2246822507) ^ Math.imul(h2 ^ (h2 >>> 13), 3266489909);
+    h2 = Math.imul(h2 ^ (h2 >>> 16), 2246822507) ^ Math.imul(h1 ^ (h1 >>> 13), 3266489909);
+    return (4294967296 * (2097151 & h2) + (h1 >>> 0)).toString(36);
+  };
+  const to24 = (ap, h) => { h = +h; if (ap === '오후' && h < 12) h += 12; if (ap === '오전' && h === 12) h = 0; return h; };
+  const mk = (y, m, d, h, mi) => Date.UTC(+y, +m - 1, +d, +h, +mi); // 카톡 표시 시각 그대로(시간대 무관)
+
+  const RE_AND = /^(\d{4})년 (\d{1,2})월 (\d{1,2})일 (오전|오후) (\d{1,2}):(\d{2}), (.*)$/;
+  const RE_AND_HEAD = /^(\d{4})년 (\d{1,2})월 (\d{1,2})일 (오전|오후) (\d{1,2}):(\d{2})$/;
+  const RE_IOS = /^(\d{4})\. ?(\d{1,2})\. ?(\d{1,2})\.? (?:(오전|오후) )?(\d{1,2}):(\d{2}),? (.*)$/;
+  const RE_PC_DATE = /^-{3,}\s*(\d{4})년 (\d{1,2})월 (\d{1,2})일.*-{3,}$/;
+  const RE_PC_MSG = /^\[(.+?)\] \[(오전|오후) (\d{1,2}):(\d{2})\] (.*)$/;
+  const DELETED = /^(메시지가 삭제되었습니다\.?|삭제된 메시지입니다\.?)$/;
+
+  // 텍스트 → 메시지 배열 [{t, sender, text, system, id}]
+  function parseExport(raw) {
+    const lines = raw.replace(/\r/g, '').split('\n');
+    const out = []; let cur = null; let pcDay = null;
+    let title = (lines[0] || '').replace(/ 님과 카카오톡 대화$/, '').replace(/^﻿/, '').trim();
+    const push = (t, rest) => {
+      const i = rest.indexOf(' : ');
+      if (i > 0) cur = { t, sender: rest.slice(0, i).trim(), text: rest.slice(i + 3) };
+      else cur = { t, sender: '', text: rest, system: true };
+      out.push(cur);
+    };
+    for (const line of lines) {
+      let m;
+      if (DELETED.test(line.trim())) { cur = null; continue; }
+      if ((m = RE_AND.exec(line))) { push(mk(m[1], m[2], m[3], to24(m[4], m[5]), m[6]), m[7]); continue; }
+      if (RE_AND_HEAD.test(line)) { cur = null; continue; }
+      if ((m = RE_IOS.exec(line))) { push(mk(m[1], m[2], m[3], m[4] ? to24(m[4], m[5]) : +m[5], m[6]), m[7]); continue; }
+      if ((m = RE_PC_DATE.exec(line))) { pcDay = [m[1], m[2], m[3]]; cur = null; continue; }
+      if (pcDay && (m = RE_PC_MSG.exec(line))) {
+        cur = { t: mk(pcDay[0], pcDay[1], pcDay[2], to24(m[2], m[3]), m[4]), sender: m[1].trim(), text: m[5] };
+        out.push(cur); continue;
+      }
+      if (cur) cur.text += '\n' + line;
+    }
+    const seen = {};
+    for (const msg of out) {
+      msg.text = msg.text.split('\n').map(l => l.replace(/\s+$/, '')).join('\n').replace(/\s+$/, ''); // 줄끝 공백 차이로 중복되지 않게
+      let id = hash(msg.t + '|' + msg.sender + '|' + msg.text);
+      seen[id] = (seen[id] || 0) + 1; if (seen[id] > 1) id += '-' + seen[id];
+      msg.id = id;
+      if (!msg.system && /^(사진( \d+장)?|동영상|이모티콘|파일: .*|음성메시지|삭제된 메시지입니다\.)$/.test(msg.text.trim())) msg.media = true;
+    }
+    return { title, messages: out };
+  }
+
+  // 닉네임 → 손님 번호 (닉네임 끝 숫자 4~6자리, 없으면 닉네임)
+  function customerKey(nick) {
+    const m = nick.match(/(\d{4,6})(?!.*\d)/);
+    return m ? m[1] : nick.replace(/\s+/g, '');
+  }
+
+  const STOP = /(초특가|특가|공동구매|공구|OPEN|오픈|입고\s*예정|입고|예정|SNS|HOT|핫한|상품|역대급|행사가?|단돈|정상가|할인|\d+년\s*전\s*가격|가격|마지막|주문|안내|추천|강추|\d+\+\d+|이벤트|신상|NEW|선착순)/gi;
+  const stripEmoji = s => s.replace(/[\u{1F000}-\u{1FAFF}\u{2600}-\u{27BF}\u{2B00}-\u{2BFF}\u{FE0F}\u{200D}\u{3030}\u{303D}\u{3297}\u{3299}]/gu, ' ').replace(/[*_~#!?.:]+/g, ' ');
+  const clean = s => stripEmoji(s).replace(STOP, ' ').replace(/[@]all/gi, ' ').replace(/\s+/g, ' ').trim();
+  const BLACK = /^(바이오|리얼|프라이스|리얼프라이스|모모즈|모모즈랩|한입|봉지|세트|국산|국내산|수입|대용량|특대|가성비)$/;
+  const SYN = [['짜장', '자장'], ['요거트', '요구르트'], ['찹쌀떡', '찹살떡']];
+
+  function keywordsFor(name) {
+    const ks = new Set();
+    for (let tok of name.split(/[\s/&,()]+/)) {
+      tok = tok.replace(/[^가-힣A-Za-z]/g, '');
+      if (tok.length < 2 || BLACK.test(tok)) continue;
+      ks.add(tok);
+      if (tok.length >= 3) ks.add(tok.slice(0, -1));
+      if (tok.length >= 5) ks.add(tok.slice(-3));
+    }
+    for (const k of [...ks]) for (const g of SYN) for (const a of g) if (k.includes(a)) for (const b of g) ks.add(k.replace(a, b));
+    return [...ks];
+  }
+
+  function priceOf(text) {
+    let m = text.match(/(\d+)\s*개\s*([\d,]+)\s*원/);
+    if (m) return Math.round(+m[2].replace(/,/g, '') / +m[1]);
+    const lines = text.split('\n');
+    const pri = lines.filter(l => /(단돈|행사가|할인가|특가가|판매가|단 [\d,]+원)/.test(l) && /[\d,]+\s*원/.test(l));
+    const pick = (pri.length ? pri : lines.filter(l => /[\d,]+\s*원/.test(l) && !/(할인!|무려|정상가)/.test(l))).pop()
+      || lines.find(l => /[\d,]+\s*원/.test(l));
+    if (!pick) return null;
+    const all = [...pick.matchAll(/([\d,]{3,})\s*원/g)];
+    return all.length ? +all[all.length - 1][1].replace(/,/g, '') : null;
+  }
+  const lineWith = (text, re) => {
+    const ls = text.split('\n').map(x => x.trim()).filter(Boolean);
+    const i = ls.findIndex(x => re.test(x)); if (i < 0) return '';
+    const strip = x => stripEmoji(x).replace(/@all/gi, '').replace(/^\s*(예약\s*(및\s*수령\s*)?(안내|마감)?|마감|수령\s*(시작|일|안내)?|픽업)\s*[:：]?\s*/, '').replace(/\s+/g, ' ').trim();
+    let v = strip(ls[i]);
+    if (!/\d/.test(v) && ls[i + 1]) v = strip(ls[i + 1]);
+    return /\d/.test(v) ? v : '';
+  };
+
+  // 공지 → 상품 후보
+  function productFromAnnouncement(text, t) {
+    const lines = text.split('\n').map(s => s.trim()).filter(Boolean);
+    const priceIdx = lines.findIndex(l => /[\d,]+\s*원/.test(l));
+    const cands = [clean(lines[0] || '')];
+    if (priceIdx > 0) cands.push(clean(lines[priceIdx - 1]));
+    let name = cands.find(c => /[가-힣]{2,}/.test(c.replace(/\d+\S*/g, ''))) || cands[0] || '새 공구';
+    name = name.replace(/\s*\d+[종입]\s*$/, m => m).trim();
+    // 옵션: ✅ 줄 또는 "A & B N종"
+    let opts = [];
+    const checks = lines.filter(l => /^✅/.test(l)).map(l => stripEmoji(l).replace(/\s+/g, ' ').trim().replace(/\s*\d+\s*(g|kg|ml|입)\b/gi, '').trim()).filter(Boolean);
+    if (checks.length >= 2) opts = checks;
+    else { const m = text.match(/([가-힣]+)\s*(?:&|,|\/|와|과)\s*([가-힣]+)\s*\d\s*종/); if (m) opts = [m[1], m[2]]; }
+    return { name, keywords: keywordsFor(name), options: buildOptions(opts), price: priceOf(text),
+      deadline: lineWith(text, /마감|예약\s*[:：]/), pickup: lineWith(text, /수령\s*(시작|일)?\s*[:：]|수령\s*(시작|일)\s*$|수령\s*:?\s*\d/), firstAt: t, src: 'notice' };
+  }
+
+  function buildOptions(names) {
+    if (!names.length) return [];
+    let pre = names[0], suf = names[0];
+    for (const n of names) { while (!n.startsWith(pre)) pre = pre.slice(0, -1); while (!n.endsWith(suf)) suf = suf.slice(1); }
+    const cores = names.map(n => n.slice(pre.length, n.length - suf.length).replace(/\s/g, '') || n.replace(/\s/g, ''));
+    return names.map((n, i) => {
+      const core = cores[i]; const al = new Set([core]);
+      if (core.length > 1 && cores.filter(c => c[0] === core[0]).length === 1) al.add(core[0]);
+      if (core.length >= 3) al.add(core.slice(-2));
+      return { name: core, aliases: [...al] };
+    });
+  }
+
+  // 사장님 정리 목록 → {name, price, entries:[{key, spec}]}
+  function ownerList(text, knownKeys) {
+    const lines = text.split('\n').map(s => s.trim()).filter(Boolean);
+    const entries = [], head = [];
+    for (const l of lines) {
+      let m = l.match(/^(\d{4,6})\s*\/?\s*(.+)$/);
+      if (!m) { for (const k of knownKeys) if (!/^\d+$/.test(k) && l.startsWith(k)) { const rest = l.slice(k.length).replace(/^\s*\/?\s*/, ''); if (/\d/.test(rest)) m = [l, k, rest]; break; } }
+      if (m && /\d/.test(m[2]) && m[2].length <= 24) entries.push({ key: m[1], spec: m[2] });
+      else if (!entries.length) head.push(l);
+    }
+    if (entries.length < 2 || entries.length < lines.length * 0.5) return null;
+    const htext = head.join('\n');
+    const name = clean(head[0] || '').replace(/[\d,]+\s*원.*$/, '').replace(/\d+\s*개.*$/, '').trim();
+    if (!name) return null;
+    return { name, price: priceOf(htext), entries };
+  }
+
+  const NUMW = { '한': 1, '하나': 1, '두': 2, '둘': 2, '세': 3, '셋': 3, '네': 4, '넷': 4, '다섯': 5, '여섯': 6, '일곱': 7, '여덟': 8, '아홉': 9, '열': 10 };
+  function normNum(s) {
+    return s.replace(/(한|하나|두|둘|세|셋|네|넷|다섯|여섯|일곱|여덟|아홉|열)(?=\s*(개|봉|봉지|세트|박스|팩|가지|종|통|병|판|마리|씩))/g, w => NUMW[w]);
+  }
+  // 수량으로 보면 안 되는 숫자 제거
+  function scrub(s, key) {
+    if (/^\d+$/.test(key)) s = s.split(key).join(' ');
+    return s.replace(/[\d,]+\s*원/g, ' ').replace(/\d+\s*(%|프로|입|g|kg|ml|시|분|일|월|년|번째)/gi, ' ').replace(/\d+\s*\+\s*\d+/g, ' ');
+  }
+
+  // 메시지에서 옵션별 수량 읽기
+  function readQty(text, product) {
+    const s = text;
+    const items = {}; let hit = false;
+    const occ = [];
+    for (const o of product.options || []) for (const a of o.aliases.slice().sort((x, y) => y.length - x.length)) {
+      let i = -1; while ((i = s.indexOf(a, i + 1)) >= 0) {
+        if (!occ.some(p => i < p.end && i + a.length > p.start)) occ.push({ start: i, end: i + a.length, opt: o.name });
+      }
+    }
+    occ.sort((a, b) => a.start - b.start);
+    occ.forEach((p, k) => {
+      const lim = k + 1 < occ.length ? occ[k + 1].start : s.length;
+      const seg = s.slice(p.end, Math.min(lim, p.end + 10));
+      const m = seg.match(/(\d+)/);
+      if (m) { items[p.opt] = (items[p.opt] || 0) + +m[1]; hit = true; }
+    });
+    const total = (s.match(/총\s*(\d+)/) || [])[1];
+    if (!hit && (product.options || []).length) {
+      const each = /(각|씩|가지|종|모두|전부|다\s)/.test(s);
+      const nums = [...s.matchAll(/(\d+)\s*(개|봉|봉지|세트|씩)?/g)];
+      const mentioned = [...new Set(occ.map(p => p.opt))];
+      if (each) {
+        const m = s.match(/(\d+)\s*(개|봉지?|씩)/) || (/\d\s*종/.test(s) ? null : nums[0]);
+        const n = m ? +m[1] : 1;
+        for (const o of product.options) items[o.name] = n;
+        return { items, each: true, vague: !/(각|씩)/.test(s) };
+      }
+      if (mentioned.length === 1 && nums.length) { items[mentioned[0]] = +(total || nums[0][1]); return { items }; }
+      if (nums.length) return { items: { '?': +(total || nums[0][1]) }, vague: true };
+      return null;
+    }
+    if (hit) return { items };
+    const m = total ? [0, total] : s.match(/(\d+)/);
+    return m ? { items: { '': +m[1] } } : null;
+  }
+
+  const FILLER = /(개|봉지|봉|세트|박스|팩|씩|각|총|추가|할게요|할께요|하겠습니다|합니다|신청|예약|부탁|드려요|드립니다|드릴게요|주세요|이요|요|여|용|입니다|해주세요|해요|사장님|사장닝|가능하면|저는|저|네|넹|넵|도|만|으로|로|이랑|랑|하고|그리고|변경|수정|취소|더|해서|되어있는데|추가되면|가지|종|ㅎ|ㅋ|ㅠ|ㅜ|\^)/g;
+
+  // 손님 메시지 → 주문 해석 결과
+  function readOrder(msg, products, key) {
+    let s = normNum(scrub(msg.text, key));
+    const compact = s.replace(/\s+/g, '');
+    const scores = products.map(p => {
+      let kw = 0, op = 0, used = [];
+      for (const k of p.keywords || []) if (compact.includes(k)) { kw = Math.max(kw, k.length); used.push(k); }
+      for (const o of p.options || []) for (const a of o.aliases) {
+        if (!s.includes(a)) continue;
+        // 한 글자 약어(팥/슈)는 숫자가 바로 붙거나 아주 짧은 메시지일 때만 상품 단서로 씀
+        if (a.length === 1 && !new RegExp(a + '\\s*\\d').test(s) && compact.length > 6) continue;
+        op++; used.push(a);
+      }
+      return { p, kw, op, used };
+    }).filter(x => x.kw || x.op);
+    if (!scores.length) return null;
+    // 옵션 별칭이 여러 상품에 겹치면 키워드가 있는 쪽 우선
+    scores.sort((a, b) => (b.kw ? 100 : 0) + b.kw * 3 + b.op - ((a.kw ? 100 : 0) + a.kw * 3 + a.op) || (b.p.firstAt || 0) - (a.p.firstAt || 0));
+    const strongs = scores.filter(x => x.kw);
+    const results = [];
+    const targets = strongs.length > 1 ? strongs : [scores[0]];
+    // 여러 상품을 한 메시지에 주문한 경우: 상품 키워드 위치로 문장을 나눔
+    if (targets.length > 1) {
+      const pos = targets.map(x => ({ x, i: Math.min(...x.used.map(u => s.indexOf(u)).filter(i => i >= 0)) })).sort((a, b) => a.i - b.i);
+      pos.forEach((q, k) => { const seg = s.slice(q.i, k + 1 < pos.length ? pos[k + 1].i : s.length); const r = readQty(seg, q.x.p); if (r) results.push({ product: q.x.p, ...r, used: q.x.used }); });
+    } else {
+      const r = readQty(s, targets[0].p); if (r) results.push({ product: targets[0].p, ...r, used: targets[0].used });
+    }
+    const question = /\?|？|(될까요|되나요|가능한가요|있나요|인가요|있을까요)/.test(msg.text);
+    if (!results.length) return question ? { question: true, product: targets[0].p } : null;
+    let left = s;
+    for (const r of results) for (const u of r.used) left = left.split(u).join(' ');
+    left = left.replace(/[\d\s,./()~!·\-_:;'"]+/g, '').replace(FILLER, '');
+    const chatty = left.length > 6;
+    if (question && (left.length > 12 || results.some(r => r.items['?']))) return { question: true, product: results[0].product };
+    const mode = /취소/.test(s) ? 'cancel' : /총\s*\d/.test(s) ? 'set' : /(추가|더\s*(주문|할|해)|\d\s*개?\s*더)/.test(s) ? 'add' : /(수정|변경|으로\s*(바꿔|해)|로\s*바꿔)/.test(s) ? 'set' : 'new';
+    return results.map(r => ({
+      productName: r.product.name, product: r.product, items: r.items, mode,
+      reasons: [question && '질문 형태', chatty && '대화가 섞임', r.vague && '옵션/수량이 애매함', r.items['?'] && '옵션을 못 찾음'].filter(Boolean)
+    }));
+  }
+
+  const sameProduct = (a, b) => {
+    const ca = a.name.replace(/\s/g, ''), cb = b.name.replace(/\s/g, '');
+    return (a.keywords || []).some(k => k.length >= 2 && cb.includes(k)) || (b.keywords || []).some(k => k.length >= 2 && ca.includes(k));
+  };
+
+  // 가져오기 한 번 분석: 기존 상품/이벤트 id를 받아 새 상품·변경·이벤트를 돌려줌
+  function analyze(raw, state) {
+    const { title, messages } = parseExport(raw);
+    const owners = new Set(state.owners && state.owners.length ? state.owners : []);
+    if (!owners.size) for (const m of messages) if (!m.system && /@all\b/.test(m.text)) owners.add(m.sender);
+    const bots = new Set(['오픈채팅봇', '방장봇']);
+    const products = (state.products || []).map(p => ({ ...p, options: (p.options || []).map(o => ({ ...o, aliases: [...o.aliases] })), keywords: [...(p.keywords || [])] }));
+    const touched = new Set(); const before = {}; for (const p of products) before[p.id] = JSON.stringify(p);
+    const known = new Set(state.knownEvents || []);
+    const nickByKey = {};
+    for (const m of messages) if (!m.system && !owners.has(m.sender) && !bots.has(m.sender)) nickByKey[customerKey(m.sender)] = m.sender;
+    const knownKeys = Object.keys(nickByKey);
+    const upsert = (cand, t) => {
+      let p = products.find(x => sameProduct(x, cand));
+      if (!p) { p = { id: 'p' + hash(cand.name + t), ...cand, createdAt: t, lastNoticeAt: cand.src === 'notice' ? t : 0 }; products.push(p); }
+      else {
+        for (const k of cand.keywords) if (!p.keywords.includes(k)) p.keywords.push(k);
+        if (cand.src === 'notice' && t > (p.lastNoticeAt || 0)) { // 더 새 공지일 때만 가격·일정 갱신 (직접 고친 값 보호)
+          if (cand.price) p.price = cand.price; if (cand.deadline) p.deadline = cand.deadline; if (cand.pickup) p.pickup = cand.pickup;
+          if (!p.options.length && cand.options.length) p.options = cand.options;
+          p.lastNoticeAt = t; if (p.src !== 'notice') { p.noticeName = cand.name; p.src = 'notice'; }
+        }
+        else if (!p.price && cand.price) p.price = cand.price;
+        p.firstAt = Math.min(p.firstAt || t, t);
+      }
+      touched.add(p.id); return p;
+    };
+    const events = []; const questions = [];
+    const stats = { messages: messages.length, newMessages: 0, orders: 0, review: 0, lists: 0, skipped: 0 };
+    for (const m of messages) {
+      if (m.system || m.media || bots.has(m.sender)) continue;
+      if (owners.has(m.sender)) {
+        const lst = ownerList(m.text, knownKeys);
+        if (lst) {
+          stats.lists++;
+          const p = upsert({ name: lst.name, keywords: keywordsFor(lst.name), options: [], price: lst.price, firstAt: m.t, src: 'list' }, m.t);
+          // 목록 속 약어(허/플/팥/슈)를 옵션으로 등록
+          for (const e of lst.entries) for (const mm of e.spec.matchAll(/([가-힣]+)\s*(\d+)/g)) {
+            const ab = mm[1];
+            if (!p.options.some(o => o.aliases.includes(ab) || o.name.includes(ab) || ab.includes(o.name))) {
+              const cnt = lst.entries.filter(x => x.spec.includes(ab)).length;
+              if (cnt >= 2) p.options.push({ name: ab, aliases: [ab] });
+            }
+          }
+          for (const e of lst.entries) {
+            const id = m.id + '-' + hash(e.key);
+            if (known.has(id)) { stats.skipped++; continue; }
+            const r = readQty(normNum(e.spec), p) || { items: {} };
+            const odd = (e.spec.match(/[가-힣]+/g) || []).filter(w => !p.options.some(o => o.aliases.some(a => w.includes(a) || a.includes(w))));
+            events.push({ id, t: m.t, kind: 'list', key: e.key, nick: nickByKey[e.key] || '', productId: p.id, items: r.items, mode: 'set', raw: e.spec, status: odd.length ? 'review' : 'ok', reasons: odd.length ? ['사장님 목록에 모르는 표기: ' + odd.join(',')] : [] });
+          }
+          continue;
+        }
+        if (/@all\b/.test(m.text) && /[\d,]+\s*원/.test(m.text)) { upsert(productFromAnnouncement(m.text, m.t), m.t); continue; }
+        const close = m.text.match(/(종료|마감)\s*(하겠습니다|합니다|되었습니다|됐습니다|할게요)/);
+        if (close && !/잠시\s*후/.test(m.text)) for (const p of products) if (p.keywords.some(k => m.text.replace(/\s/g, '').includes(k))) { p.closedAt = m.t; touched.add(p.id); }
+        continue;
+      }
+    }
+    // 목록 약어를 손님들이 실제로 쓴 단어로 풀어쓰기 (플 → 플레인)
+    const custTexts = messages.filter(m => !m.system && !owners.has(m.sender) && !bots.has(m.sender)).map(m => m.text);
+    for (const p of products) for (const o of p.options) if (o.name.length === 1) {
+      const freq = {};
+      for (const tx of custTexts) for (const w of tx.match(/[가-힣]+/g) || []) if (w.startsWith(o.name) && w.length >= 2 && w.length <= 4 && !p.keywords.some(k => w.includes(k))) freq[w] = (freq[w] || 0) + 1;
+      const best = Object.entries(freq).sort((a, b) => b[1] - a[1])[0];
+      if (best && best[1] >= 2) { o.name = best[0]; if (!o.aliases.includes(best[0])) o.aliases.unshift(best[0]); touched.add(p.id); }
+    }
+    // 목록 이벤트의 옵션명도 풀어쓴 이름으로
+    for (const e of events) { const p = products.find(x => x.id === e.productId); if (!p) continue; const it = {}; for (const [k, v] of Object.entries(e.items)) { const o = p.options.find(o => o.aliases.includes(k)); it[o ? o.name : k] = v; } e.items = it; }
+    // 손님 메시지
+    for (const m of messages) {
+      if (m.system || m.media || bots.has(m.sender) || owners.has(m.sender)) continue;
+      const key = customerKey(m.sender);
+      const avail = products.filter(p => (p.firstAt || 0) - 1000 * 3600 * 24 * 3 <= m.t);
+      const res = readOrder(m, avail.length ? avail : products, key);
+      if (!res) continue;
+      if (!Array.isArray(res)) { if (res.question) questions.push({ id: m.id, t: m.t, key, nick: m.sender, text: m.text, productId: res.product.id }); continue; }
+      res.forEach((r, i) => {
+        const id = m.id + (res.length > 1 ? '-' + i : '');
+        if (known.has(id)) { stats.skipped++; return; }
+        const reasons = [...r.reasons];
+        if (r.product.closedAt && m.t > r.product.closedAt) reasons.push('마감 후 주문');
+        events.push({ id, t: m.t, kind: 'chat', key, nick: m.sender, productId: r.product.id, items: r.items, mode: r.mode === 'new' ? 'set' : r.mode, guessMode: r.mode === 'new', raw: m.text, status: reasons.length ? 'review' : 'ok', reasons });
+      });
+    }
+    // 같은 상품을 두 번 주문했는데 "추가/변경" 말이 없으면 확인
+    const last = {};
+    for (const e of events.filter(e => e.kind === 'chat').sort((a, b) => a.t - b.t)) {
+      const k = e.productId + '|' + e.key;
+      if (last[k] && e.guessMode && JSON.stringify(last[k].items) !== JSON.stringify(e.items)) { e.status = 'review'; e.reasons.push('두 번째 주문: 추가인지 변경인지 확인'); }
+      last[k] = e;
+    }
+    stats.newMessages = messages.length;
+    stats.orders = events.filter(e => e.kind === 'chat' && e.status === 'ok').length;
+    stats.review = events.filter(e => e.status === 'review').length;
+    return { title, owners: [...owners], products, changedProducts: products.filter(p => touched.has(p.id) && before[p.id] !== JSON.stringify(p)), events, questions, stats, range: messages.length ? [messages[0].t, messages[messages.length - 1].t] : null };
+  }
+
+  // 이벤트 → 상품별 주문장 {productId: {key: {items, nick, lastT, src, ...}}}
+  function book(events) {
+    const out = {};
+    for (const e of [...events].filter(e => e.status === 'ok').sort((a, b) => a.t - b.t || (a.kind === 'list' ? -1 : 1))) {
+      const b = out[e.productId] || (out[e.productId] = {});
+      const row = b[e.key] || { items: {}, nick: '', history: [] };
+      if (e.nick) row.nick = e.nick;
+      if (e.mode === 'cancel') row.items = {};
+      else if (e.mode === 'add') for (const [k, v] of Object.entries(e.items)) row.items[k] = (row.items[k] || 0) + v;
+      else row.items = { ...e.items };
+      row.history.push(e); row.lastT = e.t;
+      b[e.key] = row;
+    }
+    for (const b of Object.values(out)) for (const [k, r] of Object.entries(b)) if (!Object.values(r.items).some(v => v > 0)) delete b[k];
+    return out;
+  }
+
+  return { hash, parseExport, customerKey, productFromAnnouncement, ownerList, keywordsFor, buildOptions, readOrder, readQty, clean, priceOf, analyze, book };
+})();
+
+</script>
+<script>
+// ===== 저장소 (Firebase: 구글 로그인 + 가게별 장부) =====
+const COLS = ['products', 'events', 'questions', 'status', 'customers'];
+const S = { products: {}, events: {}, questions: {}, status: {}, customers: {}, config: {}, tab: 'pick', pick: '', open: null, q: '', loaded: false, mode: 'shared', analysis: null, ai: {}, filter: 'open', gate: 'loading', user: null, stores: [], store: null, pendingShare: null };
+let fsdb = null, storeRef = null, unsubs = [];
+const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+const won = n => (n == null || isNaN(n)) ? '' : Math.round(n).toLocaleString('ko-KR') + '원';
+const wallNow = () => Date.now() - new Date().getTimezoneOffset() * 60000;
+const fmtT = t => { if (!t) return ''; const d = new Date(t); const h = d.getUTCHours(); return `${d.getUTCMonth() + 1}/${d.getUTCDate()} ${h < 12 ? '오전' : '오후'} ${(h % 12) || 12}:${String(d.getUTCMinutes()).padStart(2, '0')}`; };
+const H = KP.hash;
+const lsGet = k => { try { return localStorage.getItem(k); } catch (e) { return null; } };
+const lsSet = (k, v) => { try { localStorage.setItem(k, v); } catch (e) {} };
+const sleep = ms => new Promise(r => setTimeout(r, ms));
+
+// Firestore는 빈 문자열 필드 이름을 못 써서 수량 키 ''를 '_'로 바꿔 저장
+const encItems = d => { if (d.items) { const it = {}; for (const [k, v] of Object.entries(d.items)) it[k === '' ? '_' : k] = v; d.items = it; } return d; };
+const decItems = d => { if (d.items) { const it = {}; for (const [k, v] of Object.entries(d.items)) it[k === '_' ? '' : k] = v; d.items = it; } return d; };
+const clean = d => JSON.parse(JSON.stringify(d));
+
+function writeErr(e) {
+  console.error(e);
+  toast(e && e.code === 'permission-denied' ? '이 장부에 쓸 권한이 없어요. 초대받은 구글 계정인지 확인하세요.' : '저장하지 못했어요. 인터넷 연결을 확인해 주세요.');
+}
+// 오프라인이어도 화면은 바로 바뀌고, 연결되면 자동으로 올라가요
+async function put(col, id, data) {
+  data = { ...data }; delete data.id;
+  if (col === 'config') {
+    S.config.main = { ...(S.config.main || {}), ...data };
+    const p = storeRef.set(clean({ name: data.storeName || (S.store && S.store.name) || '', owners: data.owners || [] }), { merge: true });
+    p.catch(writeErr); await Promise.race([p, sleep(1200)]); return;
+  }
+  S[col][id] = { ...data, id };
+  const p = storeRef.collection(col).doc(id).set(encItems(clean(data)));
+  p.catch(writeErr); await Promise.race([p, sleep(1200)]);
+}
+async function putMany(list, onProgress) {
+  let done = 0;
+  for (let i = 0; i < list.length; i += 400) {
+    const b = fsdb.batch();
+    for (const [c, id, d] of list.slice(i, i + 400)) {
+      const data = { ...d }; delete data.id;
+      if (c === 'config') { S.config.main = { ...(S.config.main || {}), ...data }; b.set(storeRef, clean({ name: data.storeName || (S.store && S.store.name) || '', owners: data.owners || [] }), { merge: true }); }
+      else { S[c][id] = { ...data, id }; b.set(storeRef.collection(c).doc(id), encItems(clean(data))); }
+      done++;
+    }
+    const p = b.commit(); p.catch(writeErr); await Promise.race([p, sleep(2500)]);
+    onProgress && onProgress(done, list.length);
+  }
+}
+
+function setSync(on, text) { const el = document.getElementById('sync'); el.innerHTML = `<span class="dot ${on ? 'on' : ''}"></span><span>${esc(text)}</span>`; }
+const myEmail = () => (S.user && S.user.email || '').toLowerCase();
+
+async function boot() {
+  render();
+  // 카톡에서 공유로 들어온 대화
+  if (new URLSearchParams(location.search).has('shared')) {
+    try { const c = await caches.open('gongu-shared'); const r = await c.match('shared-chat'); if (r) { S.pendingShare = await r.text(); await c.delete('shared-chat'); } } catch (e) {}
+    history.replaceState({}, '', location.pathname);
+  }
+  if (!window.FIREBASE_CONFIG || !window.FIREBASE_CONFIG.apiKey) { S.gate = 'setup'; render(); return; }
+  firebase.initializeApp(window.FIREBASE_CONFIG);
+  fsdb = firebase.firestore();
+  try { await fsdb.enablePersistence({ synchronizeTabs: true }); } catch (e) {}
+  firebase.auth().getRedirectResult().catch(e => { if (e && e.code !== 'auth/no-auth-event') toast('로그인하지 못했어요. 다시 눌러 주세요.'); });
+  firebase.auth().onAuthStateChanged(async u => {
+    S.user = u;
+    if (!u) { closeStore(); S.gate = 'login'; render(); return; }
+    await loadStores();
+  });
+  window.addEventListener('online', () => setSync(true, '함께 쓰는 중'));
+  window.addEventListener('offline', () => setSync(false, '인터넷 끊김 · 연결되면 자동 저장'));
+}
+async function login() {
+  const pv = new firebase.auth.GoogleAuthProvider(); pv.setCustomParameters({ prompt: 'select_account' });
+  try { await firebase.auth().signInWithPopup(pv); }
+  catch (e) {
+    if (e && /popup|operation-not-supported|web-storage/.test(e.code || '')) await firebase.auth().signInWithRedirect(pv);
+    else if (e && e.code !== 'auth/cancelled-popup-request' && e.code !== 'auth/popup-closed-by-user') toast('로그인하지 못했어요. 다시 눌러 주세요.');
+  }
+}
+async function loadStores() {
+  S.gate = 'loading'; render();
+  try {
+    const snap = await fsdb.collection('stores').where('members', 'array-contains', myEmail()).get();
+    S.stores = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+  } catch (e) { console.error(e); S.stores = []; }
+  if (!S.stores.length) { S.gate = 'nostore'; render(); return; }
+  const last = lsGet('gongu-store');
+  openStore((S.stores.find(s => s.id === last) || S.stores[0]).id);
+}
+function closeStore() { for (const u of unsubs) u(); unsubs = []; storeRef = null; for (const c of COLS) S[c] = {}; S.config = {}; S.loaded = false; S.store = null; }
+function openStore(id) {
+  closeStore(); lsSet('gongu-store', id);
+  storeRef = fsdb.collection('stores').doc(id);
+  S.gate = 'ok'; S.tab = S.pendingShare ? 'import' : 'pick'; setSync(navigator.onLine, navigator.onLine ? '함께 쓰는 중' : '인터넷 끊김 · 연결되면 자동 저장');
+  unsubs.push(storeRef.onSnapshot(d => {
+    if (!d.exists) return;
+    const v = d.data(); S.store = { id: d.id, ...v };
+    S.config.main = { storeName: v.name || '', owners: v.owners || [] };
+    if (!(v.members || []).includes(myEmail())) { toast('이 장부에서 빠졌어요.'); closeStore(); loadStores(); return; }
+    schedule();
+  }, e => { console.error(e); }));
+  let pending = new Set(COLS);
+  for (const c of COLS) {
+    unsubs.push(storeRef.collection(c).onSnapshot(snap => {
+      const o = {}; for (const d of snap.docs) o[d.id] = { ...decItems(d.data()), id: d.id };
+      S[c] = o; pending.delete(c);
+      if (!pending.size && !S.loaded) {
+        S.loaded = true;
+        if (S.pendingShare) { const t = S.pendingShare; S.pendingShare = null; S.tab = 'import'; setTimeout(() => runAnalyze(t), 0); }
+      }
+      schedule();
+    }, e => { console.error(e); setSync(false, e.code === 'permission-denied' ? '접근 권한 없음' : '연결 끊김'); }));
+  }
+}
+async function createStore(name) {
+  const ref = await fsdb.collection('stores').add({ name, members: [myEmail()], ownerUid: S.user.uid, owners: [], createdAt: Date.now() });
+  S.stores.push({ id: ref.id, name, members: [myEmail()] });
+  openStore(ref.id);
+}
+async function invite(email) {
+  email = email.trim().toLowerCase();
+  if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) { toast('이메일 주소를 확인해 주세요.'); return false; }
+  await storeRef.update({ members: firebase.firestore.FieldValue.arrayUnion(email) });
+  toast(`${email} 님을 초대했어요.`); return true;
+}
+async function uninvite(email) {
+  await storeRef.update({ members: firebase.firestore.FieldValue.arrayRemove(email) });
+  toast(`${email} 님을 뺐어요.`);
+}
+
+function renderGate() {
+  document.getElementById('tabs').hidden = true;
+  document.getElementById('sizeBtn').hidden = S.gate !== 'ok' && S.gate !== 'login' && S.gate !== 'nostore';
+  const main = document.getElementById('main');
+  if (S.gate === 'loading') { main.innerHTML = `<div class="card empty">장부를 여는 중…</div>`; setSync(false, '연결 중'); return; }
+  if (S.gate === 'setup') { main.innerHTML = `<div class="card empty"><div class="pname">설정이 아직 안 끝났어요</div>firebase-config.js 에 Firebase 설정값을 넣어야 해요.</div>`; setSync(false, '설정 필요'); return; }
+  if (S.gate === 'login') {
+    setSync(false, '로그인 필요');
+    main.innerHTML = `<section class="card" style="display:grid;gap:16px;text-align:center;padding:28px 18px">
+      <div class="pname" style="font-size:24px">공구장부</div>
+      <div style="font-size:17px">카톡 공구 주문을 손님 번호별로 정리하고<br>입금·수령을 함께 관리해요.</div>
+      <button class="bigbtn" data-act="login">구글 계정으로 시작하기</button>
+      <div class="small muted">사장님이 초대한 구글 계정으로 로그인하면 같은 장부가 보여요.</div>
+      ${S.pendingShare ? '<div class="ai">카톡에서 보낸 대화가 기다리고 있어요. 로그인하면 바로 정리할게요.</div>' : ''}
+    </section>`;
+    return;
+  }
+  if (S.gate === 'nostore') {
+    setSync(true, myEmail());
+    main.innerHTML = `<section class="card" style="display:grid;gap:14px">
+      <div class="pname">장부가 아직 없어요</div>
+      <div><b>직원이라면</b> 사장님께 이 이메일로 초대해 달라고 하세요.<div class="raw" style="margin-top:6px;font-size:18px;font-weight:700">${esc(myEmail())}</div><button class="btn sm" style="margin-top:6px" data-act="copyEmail">이메일 복사</button> <button class="btn sm" data-act="reload">초대받았어요, 다시 보기</button></div>
+      <hr style="border:0;border-top:1px solid var(--line);width:100%">
+      <div><b>새 장부를 만들려면</b></div>
+      <label class="field">가게 이름<input id="newStore" placeholder="예: GS25 ○○점"></label>
+      <button class="bigbtn" data-act="createStore">장부 만들기</button>
+      <button class="btn ghost" data-act="logout">다른 계정으로 로그인</button>
+    </section>`;
+  }
+}
+
+let raf = 0; function schedule() { if (!raf) raf = requestAnimationFrame(() => { raf = 0; render(); }); }
+
+// ===== 계산 =====
+const productsArr = () => Object.values(S.products).filter(p => !p.hidden).sort((a, b) => (!!a.closedAt - !!b.closedAt) || ((b.lastNoticeAt || b.firstAt || 0) - (a.lastNoticeAt || a.firstAt || 0)));
+const shortOpt = (p, name) => { const o = (p.options || []).find(o => o.name === name); if (!o) return name === '?' ? '옵션?' : name; return o.aliases.slice().sort((a, b) => a.length - b.length)[0] || o.name; };
+const itemsText = (p, items, short) => {
+  const ent = Object.entries(items || {}).filter(([, v]) => v > 0);
+  if (!ent.length) return '-';
+  return ent.map(([k, v]) => k === '' ? `${v}개` : `${short ? shortOpt(p, k) : k} ${v}`).join(' · ');
+};
+const sumItems = items => Object.values(items || {}).reduce((a, b) => a + (+b || 0), 0);
+const statusId = (pid, key) => 's' + H(pid + '|' + key);
+const custId = key => 'c' + H(key);
+
+function compute() {
+  const evs = Object.entries(S.events).map(([id, e]) => ({ ...e, id }));
+  const book = KP.book(evs);
+  const nickOf = {};
+  for (const e of evs.sort((a, b) => a.t - b.t)) if (e.nick) nickOf[e.key] = e.nick;
+  const lists = {};
+  for (const e of evs) if (e.kind === 'list') { const L = lists[e.productId] || (lists[e.productId] = { t: 0, keys: new Set() }); if (e.t > L.t) { L.t = e.t; L.keys = new Set(); } if (e.t === L.t) L.keys.add(e.key); }
+  const review = evs.filter(e => e.status === 'review').sort((a, b) => b.t - a.t);
+  return { evs, book, nickOf, lists, review };
+}
+function rowsFor(C, p) {
+  const b = C.book[p.id] || {}; const L = C.lists[p.id];
+  return Object.entries(b).map(([key, r]) => {
+    const st = S.status[statusId(p.id, key)] || {};
+    let flag = '';
+    if (L) {
+      const after = r.history.some(e => e.kind !== 'list' && e.t > L.t);
+      if (!L.keys.has(key)) flag = after ? '목록 이후 주문' : '사장님 목록에 없음';
+      else if (after) flag = '목록 이후 변경';
+    }
+    const qty = sumItems(r.items);
+    return { key, nick: r.nick || C.nickOf[key] || (S.customers[custId(key)] || {}).nick || '', items: r.items, qty, amount: p.price ? p.price * qty : null, paid: !!st.paid, picked: !!st.picked, flag, firstT: r.history[0].t, history: r.history };
+  }).sort((a, b) => a.firstT - b.firstT);
+}
+function optionTotals(p, rows) {
+  const t = {}; for (const r of rows) for (const [k, v] of Object.entries(r.items)) t[k] = (t[k] || 0) + v; return t;
+}
+
+// ===== 화면 =====
+function render() {
+  if (S.gate !== 'ok') { renderGate(); return; }
+  document.getElementById('tabs').hidden = false; document.getElementById('sizeBtn').hidden = false;
+  document.querySelectorAll('#tabs button').forEach(b => b.setAttribute('aria-selected', b.dataset.tab === S.tab ? 'true' : 'false'));
+  const C = compute();
+  const nRev = C.review.length + Object.values(S.questions).filter(q => q.status !== 'done').length;
+  const badge = document.getElementById('revBadge'); badge.hidden = !nRev; badge.textContent = nRev;
+  const cfg = S.config.main || {};
+  document.getElementById('storeName').textContent = cfg.storeName || '공구장부';
+  const main = document.getElementById('main');
+  const f = document.activeElement;
+  if (f && main.contains(f) && f.closest('[data-rev]')) { S.dirty = true; if (S.sheet) renderSheet(C); return; } // 확인 카드 입력 중엔 기다림
+  S.dirty = false;
+  const keepScroll = window.scrollY;
+  if (!S.loaded) { main.innerHTML = `<div class="card empty">장부를 불러오는 중…</div>`; return; }
+  main.innerHTML = S.sub === 'pickups' ? viewPickups(C) : S.sub === 'unpaid' ? viewUnpaid(C) : S.tab === 'pick' ? viewPick(C) : S.tab === 'gongu' ? (S.open ? viewProduct(C, S.products[S.open]) : viewProducts(C))
+    : S.tab === 'cust' ? viewCustomers(C) : S.tab === 'review' ? viewReview(C) : viewImport();
+  if (S.tab === 'import') wireImport();
+  window.scrollTo(0, keepScroll);
+  if (S.sheet) renderSheet(C);
+}
+
+function emptyBook() {
+  return `<div class="card empty">
+    <div class="pname">아직 장부가 비어 있어요</div>
+    <div>오픈채팅방 대화를 내보내서 올리면 공구 상품과 주문이 자동으로 정리됩니다.</div>
+    <ol class="steps">
+      <li>카톡 공구방 → 오른쪽 위 ≡ → 설정(⚙) → <b>대화 내용 내보내기</b></li>
+      <li>'텍스트만 보내기' → 공유 목록에서 <b>공구장부</b> 선택</li>
+      <li>또는 저장한 txt 파일을 아래 버튼으로 올리기</li>
+    </ol>
+    <div class="row" style="margin-top:16px;justify-content:center"><button class="btn pri" data-act="tab" data-v="import">대화 가져오기</button><button class="btn" data-act="newProduct">직접 공구 만들기</button><button class="btn" data-act="newCust">손님 등록</button></div>
+  </div>`;
+}
+
+function viewProducts(C) {
+  const all = productsArr();
+  if (!all.length) return emptyBook();
+  const open = all.filter(p => !p.closedAt), closed = all.filter(p => p.closedAt);
+  const list = S.filter === 'open' ? open : closed;
+  const totalCust = new Set(); let unpaid = 0;
+  for (const p of all) for (const r of rowsFor(C, p)) { totalCust.add(r.key); if (!r.paid) unpaid++; }
+  const card = p => {
+    const rows = rowsFor(C, p); const tot = optionTotals(p, rows);
+    const flags = rows.filter(r => r.flag).length; const picked = rows.filter(r => r.picked).length;
+    const amt = rows.reduce((a, r) => a + (r.amount || 0), 0);
+    return `<button class="prod" data-act="open" data-v="${esc(p.id)}">
+      <div class="row"><div class="pname grow">${esc(p.name)}</div>${p.closedAt ? '<span class="chip">마감</span>' : '<span class="chip acc">모집 중</span>'}</div>
+      <div class="facts">${p.price ? `<span>단가 <b class="num">${won(p.price)}</b></span>` : '<span>가격 미정</span>'}${p.deadline ? `<span>마감 <b>${esc(p.deadline)}</b></span>` : ''}${p.pickup ? `<span>수령 <b>${esc(p.pickup)}</b></span>` : ''}</div>
+      <div class="tot"><span>손님 <b>${rows.length}</b>명</span>${Object.entries(tot).map(([k, v]) => `<span>${esc(k === '' ? '수량' : k)} <b>${v}</b></span>`).join('')}${amt ? `<span>합계 <b>${won(amt)}</b></span>` : ''}</div>
+      ${flags || picked ? `<div class="row">${flags ? `<span class="chip warn">목록 대조 필요 ${flags}명</span>` : ''}${picked ? `<span class="chip ok">수령 ${picked}/${rows.length}</span>` : ''}</div>` : ''}
+    </button>`;
+  };
+  return summaryBar(C) + `<button class="bigbtn" data-act="newProduct">＋ 새 공구 만들기</button>
+    <div class="row"><button class="btn sm ${S.filter === 'open' ? 'pri' : 'ghost'}" data-act="filter" data-v="open">모집 중 ${open.length}</button><button class="btn sm ${S.filter === 'closed' ? 'pri' : 'ghost'}" data-act="filter" data-v="closed">마감 ${closed.length}</button><span class="grow"></span><span class="small muted">손님 ${totalCust.size}명 · 미입금 ${unpaid}건</span></div>
+    ${list.length ? list.map(card).join('') : `<div class="card empty">${S.filter === 'open' ? '모집 중인 공구가 없어요.' : '마감된 공구가 없어요.'}</div>`}`;
+}
+
+function viewProduct(C, p) {
+  if (!p) { S.open = null; return viewProducts(C); }
+  const rows = rowsFor(C, p); const tot = optionTotals(p, rows);
+  const amt = rows.reduce((a, r) => a + (r.amount || 0), 0);
+  const paid = rows.filter(r => r.paid).length, picked = rows.filter(r => r.picked).length;
+  const flagged = rows.filter(r => r.flag);
+  const L = C.lists[p.id];
+  return `
+    <div class="row"><button class="btn sm ghost" data-act="back">← 공구 목록</button><span class="grow"></span><button class="btn sm ghost" data-act="editProduct" data-v="${esc(p.id)}">상품 정보 수정</button></div>
+    <section class="card prod">
+      <div class="row"><div class="pname grow">${esc(p.name)}</div>${p.closedAt ? '<span class="chip">마감</span>' : '<span class="chip acc">모집 중</span>'}</div>
+      <div class="facts">${p.price ? `<span>단가 <b class="num">${won(p.price)}</b></span>` : '<span>가격 미정</span>'}${p.deadline ? `<span>마감 <b>${esc(p.deadline)}</b></span>` : ''}${p.pickup ? `<span>수령 <b>${esc(p.pickup)}</b></span>` : ''}</div>
+      <div class="tot"><span>손님 <b>${rows.length}</b>명</span>${Object.entries(tot).map(([k, v]) => `<span>${esc(k === '' ? '총 수량' : k)} <b>${v}</b></span>`).join('')}${amt ? `<span>합계 <b>${won(amt)}</b></span>` : ''}</div>
+      <div class="row"><span class="chip ${paid === rows.length && rows.length ? 'ok' : ''}">입금 ${paid}/${rows.length}</span><span class="chip ${picked === rows.length && rows.length ? 'ok' : ''}">수령 ${picked}/${rows.length}</span></div>
+      <div class="row"><button class="btn pri grow" data-act="copyList" data-v="${esc(p.id)}">채팅방에 올릴 목록 복사</button>${pickupState(p) && pickupState(p) !== 'later' && notPicked(C, p).length ? `<button class="btn grow" data-act="copyMention" data-v="${esc(p.id)}">안 온 손님 @멘션 복사</button>` : ''}<button class="btn" data-act="addOrder" data-v="${esc(p.id)}">주문 추가</button></div>
+    </section>
+    ${flagged.length ? `<div class="card ai"><b>사장님 목록과 비교</b> · ${fmtT(L && L.t)}에 올린 목록 기준으로 ${flagged.length}명이 다릅니다. 목록에 빠졌거나 그 뒤에 들어온 주문이에요.</div>` : ''}
+    <section class="card sheetlist">
+      ${rows.length ? rows.map(r => `
+        <div class="orow">
+          <span class="tag">${esc(r.key)}</span>
+          <div class="who"><div class="items">${esc(itemsText(p, r.items))}</div><div class="nick">${esc(r.nick)}</div></div>
+          <div class="amt">${r.amount ? won(r.amount) : ''}</div>
+          <div class="acts">
+            <button class="tog" aria-pressed="${r.paid}" data-act="toggle" data-f="paid" data-p="${esc(p.id)}" data-k="${esc(r.key)}">입금</button>
+            <button class="tog" aria-pressed="${r.picked}" data-act="toggle" data-f="picked" data-p="${esc(p.id)}" data-k="${esc(r.key)}">수령</button>
+            ${r.flag ? `<span class="chip warn">${esc(r.flag)}</span>` : ''}
+            <span class="grow"></span>
+            <button class="linkish" data-act="editOrder" data-p="${esc(p.id)}" data-k="${esc(r.key)}">수정·기록</button>
+          </div>
+        </div>`).join('') : '<div class="empty">아직 주문이 없어요.</div>'}
+    </section>`;
+}
+
+function custAgg(C) {
+  const m = {};
+  for (const p of Object.values(S.products)) for (const r of rowsFor(C, p)) {
+    const c = m[r.key] || (m[r.key] = { key: r.key, nick: r.nick, orders: [], amount: 0, unpaid: 0, unpicked: 0, last: 0 });
+    c.orders.push({ p, r }); c.amount += r.amount || 0; if (!r.paid) c.unpaid++; if (!r.picked) c.unpicked++;
+    const lt = r.history[r.history.length - 1].t; if (lt > c.last) { c.last = lt; if (r.nick) c.nick = r.nick; }
+  }
+  for (const cd of Object.values(S.customers)) if (cd.key) {
+    const c = m[cd.key] || (m[cd.key] = { key: cd.key, nick: '', orders: [], amount: 0, unpaid: 0, unpicked: 0, last: cd.createdAt || 0, registered: true });
+    if (cd.nick) c.nick = cd.nick; c.phone = cd.phone || '';
+  }
+  return Object.values(m).sort((a, b) => b.last - a.last);
+}
+function viewCustomers(C) {
+  const list = custAgg(C);
+  const q = S.q.trim();
+  const shown = q ? list.filter(c => c.key.includes(q) || (c.nick || '').includes(q) || (c.phone || '').includes(q)) : list;
+  return `
+    <button class="bigbtn" data-act="newCust">＋ 손님 등록</button>
+    <input class="search" id="q" type="search" inputmode="search" placeholder="번호나 닉네임으로 찾기 (예: 8360)" value="${esc(S.q)}" autocomplete="off">
+    <div class="small muted">손님 ${list.length}명 · 최근 주문 순</div>
+    <section class="card sheetlist">
+      ${shown.map(c => {
+        const memo = (S.customers[custId(c.key)] || {}).memo;
+        return `<div class="orow">
+          <span class="tag">${esc(c.key)}</span>
+          <div class="who"><div class="items">${esc(c.nick || c.key)}</div><div class="nick">${c.orders.map(o => esc(o.p.name)).join(', ')}${memo ? ' · 📝 ' + esc(memo) : ''}</div></div>
+          <div class="amt">${c.amount ? won(c.amount) : ''}</div>
+          <div class="acts">${!c.orders.length ? '<span class="chip">주문 없음</span>' : c.unpaid ? `<span class="chip warn">미입금 ${c.unpaid}</span>` : '<span class="chip ok">입금 완료</span>'}${c.unpicked ? `<span class="chip">미수령 ${c.unpicked}</span>` : ''}<span class="grow"></span><button class="linkish" data-act="openCust" data-k="${esc(c.key)}">자세히</button></div>
+        </div>`;
+      }).join('') || (list.length ? '<div class="empty">찾는 손님이 없어요.</div>' : '<div class="empty">아직 손님이 없어요. 위의 ＋ 손님 등록을 누르거나 대화를 가져오세요.</div>')}
+    </section>`;
+}
+
+function reviewForm(e) {
+  const p = S.products[e.productId] || productsArr()[0];
+  const sug = S.ai[e.id];
+  const items = (sug && sug.items) || e.items || {};
+  const opts = p && (p.options || []).length ? p.options.map(o => o.name) : [''];
+  return `<div class="card" style="display:grid;gap:10px" data-rev="${esc(e.id)}">
+    <div class="row"><span class="tag">${esc(e.key)}</span><span class="grow small">${esc(e.nick)}</span><span class="small muted">${fmtT(e.t)}</span></div>
+    <div class="raw">${esc(e.raw)}</div>
+    <div class="row">${(e.reasons || []).map(r => `<span class="chip warn">${esc(r)}</span>`).join('')}${e.kind === 'list' ? '<span class="chip">사장님 목록</span>' : ''}</div>
+    ${sug ? `<div class="ai">AI 판단: ${sug.action === 'ignore' ? '주문이 아님' : 'ㅤ' + esc(itemsText(S.products[sug.productId] || p, sug.items)) + (sug.mode === 'add' ? ' (추가)' : sug.mode === 'cancel' ? ' (취소)' : '')}${sug.note ? ' · ' + esc(sug.note) : ''}</div>` : ''}
+    <div class="row">
+      <label class="field grow">상품<select data-f="product">${productsArr().map(x => `<option value="${esc(x.id)}" ${x.id === ((sug && sug.productId) || e.productId) ? 'selected' : ''}>${esc(x.name)}</option>`).join('')}</select></label>
+      <label class="field">처리<select data-f="mode">${[['set', '이 수량으로'], ['add', '기존에 추가'], ['cancel', '주문 취소']].map(([v, l]) => `<option value="${v}" ${(sug ? sug.mode : e.mode) === v ? 'selected' : ''}>${l}</option>`).join('')}</select></label>
+    </div>
+    <div class="qtys">${opts.map(o => `<label class="field">${esc(o || '수량')}<input type="number" inputmode="numeric" min="0" data-opt="${esc(o)}" value="${esc(items[o] ?? (o === opts[0] && items['?'] ? items['?'] : ''))}"></label>`).join('')}</div>
+    <div class="row"><button class="btn pri grow" data-act="confirmRev" data-v="${esc(e.id)}">주문으로 확정</button><button class="btn" data-act="ignoreRev" data-v="${esc(e.id)}">주문 아님</button></div>
+  </div>`;
+}
+function viewReview(C) {
+  const qs = Object.entries(S.questions).map(([id, q]) => ({ ...q, id })).filter(q => q.status !== 'done').sort((a, b) => b.t - a.t);
+  if (!C.review.length && !qs.length) return `<div class="card empty"><div class="pname">확인할 게 없어요</div>애매한 주문이나 답하지 않은 문의가 생기면 여기에 모입니다.</div>`;
+  return `
+    ${C.review.length ? `<div class="row"><h2 class="grow">애매한 주문 ${C.review.length}건</h2>${window.claude ? '<button class="btn sm" data-act="askAI" id="aiBtn">AI에게 한꺼번에 물어보기</button>' : ''}</div>
+    <div class="small muted" id="aiNote">대화가 섞였거나 수량·옵션이 분명하지 않은 메시지예요. 확정하기 전까지는 주문표에 넣지 않았어요.</div>
+    ${C.review.map(reviewForm).join('')}` : ''}
+    ${qs.length ? `<h2>답하지 않은 문의 ${qs.length}건</h2>
+    <section class="card sheetlist">${qs.map(q => `<div class="orow"><span class="tag">${esc(q.key)}</span><div class="who"><div>${esc(q.text)}</div><div class="nick">${esc(q.nick)} · ${fmtT(q.t)}</div></div><button class="btn sm" data-act="doneQ" data-v="${esc(q.id)}">답함</button></div>`).join('')}</section>` : ''}`;
+}
+
+function viewImport() {
+  const cfg = S.config.main || {};
+  const A = S.analysis;
+  return `
+    <section class="card" style="display:grid;gap:12px">
+      <div><div class="pname">대화 가져오기</div><div class="small muted">같은 대화를 여러 번 올려도 이미 들어온 주문은 건너뛰니, 매번 전체를 내보내서 올려도 괜찮아요.</div></div>
+      <label class="drop" id="drop" for="file"><b>카톡 대화 txt 파일 선택</b><br><span class="small muted">여기로 끌어 놓아도 돼요 · 안드로이드, 아이폰, PC 형식 모두 읽어요</span><input id="file" type="file" accept=".txt,text/plain" hidden></label>
+      <details><summary>또는 대화 내용 붙여넣기</summary><div style="display:grid;gap:8px;margin-top:8px"><textarea class="paste" id="paste" placeholder="카톡에서 메시지를 길게 눌러 복사한 내용이나 내보낸 txt 내용을 붙여넣으세요"></textarea><button class="btn" data-act="analyzePaste">붙여넣은 내용 분석</button></div></details>
+    </section>
+    ${A ? `<section class="card" style="display:grid;gap:12px">
+      <div class="row"><div class="grow"><b>${esc(A.title || '대화')}</b><div class="small muted">${A.range ? fmtT(A.range[0]) + ' ~ ' + fmtT(A.range[1]) : ''} · 사장님: ${esc(A.owners.join(', ') || '못 찾음')}</div></div></div>
+      <div class="stats">
+        <div class="stat"><b>${A.stats.messages}</b><span>메시지</span></div>
+        <div class="stat"><b>${A.newOrders}</b><span>새 주문</span></div>
+        <div class="stat"><b>${A.newListLines}</b><span>사장님 목록 줄</span></div>
+        <div class="stat"><b>${A.newReview}</b><span>확인 필요</span></div>
+        <div class="stat"><b>${A.newQuestions}</b><span>문의</span></div>
+        <div class="stat"><b>${A.stats.skipped}</b><span>이미 있음</span></div>
+      </div>
+      ${A.changedProducts.length ? `<div><div class="small muted" style="margin-bottom:6px">공구 상품</div><div class="row">${A.changedProducts.map(p => `<span class="chip ${S.products[p.id] ? '' : 'acc'}">${S.products[p.id] ? '' : '새 · '}${esc(p.name)}${p.price ? ' ' + won(p.price) : ''}</span>`).join('')}</div></div>` : ''}
+      ${!A.owners.length ? `<div class="ai">사장님 닉네임을 못 찾았어요. 공지에 @all 을 쓰지 않았다면 아래 설정에 사장님 닉네임을 넣고 다시 분석해 주세요.</div>` : ''}
+      <div class="row"><button class="btn pri grow" data-act="saveImport" id="saveBtn" ${A.saving ? 'disabled' : ''}>${A.saving ? esc(A.saving) : '장부에 저장'}</button><button class="btn" data-act="clearImport">취소</button></div>
+    </section>` : ''}
+    <section class="card" style="display:grid;gap:10px">
+      <b>설정</b>
+      <label class="field">가게 이름<input id="cfgName" value="${esc(cfg.storeName || '')}" placeholder="예: GS25 덕양도래울점"></label>
+      <label class="field">사장님·직원 닉네임 (쉼표로 구분, 이 사람들 메시지는 주문으로 안 셉니다)<input id="cfgOwners" value="${esc((cfg.owners || []).join(', '))}" placeholder="비워 두면 @all 공지를 올린 사람으로 자동 인식"></label>
+      <div class="row"><button class="btn" data-act="saveCfg">설정 저장</button></div>
+    </section>
+    ${membersCard()}
+    <details class="card"><summary>대화 내보내는 방법</summary>
+      <div class="small" style="display:grid;gap:6px;margin-top:8px">
+        <div class="ai"><b>제일 쉬운 방법 (안드로이드)</b> · 카톡 채팅방 ≡ → ⚙ 설정 → 대화 내용 내보내기 → 텍스트만 보내기 → 공유 목록에서 <b>공구장부</b>를 누르면 바로 정리돼요. 공구장부가 목록에 없으면 먼저 '휴대폰에 앱 설치'를 해 주세요.</div>
+        <div><b>안드로이드</b> · 채팅방 ≡ → ⚙ 설정 → 대화 내용 내보내기 → 텍스트만 보내기 → 저장하거나 이 앱이 열린 곳으로 보내기</div>
+        <div><b>아이폰</b> · 채팅방 ≡ → ⚙ 설정 → 대화 내용 내보내기 → 텍스트 메시지만 → '파일에 저장'</div>
+        <div><b>PC 카카오톡</b> · 채팅방 ≡ → 대화 내보내기 → txt로 저장</div>
+        <div class="muted">일부만 올리고 싶으면 메시지를 길게 눌러 복사한 뒤 '붙여넣기'를 쓰세요.</div>
+      </div>
+    </details>`;
+}
+
+function wireImport() {
+  const f = document.getElementById('file'), drop = document.getElementById('drop');
+  if (!f) return;
+  const read = file => { const r = new FileReader(); r.onload = () => { let txt = r.result; if (/\uFFFD/.test(txt.slice(0, 500))) { const r2 = new FileReader(); r2.onload = () => runAnalyze(r2.result); r2.readAsText(file, 'euc-kr'); } else runAnalyze(txt); }; r.readAsText(file, 'utf-8'); };
+  f.onchange = () => f.files[0] && read(f.files[0]);
+  drop.ondragover = e => { e.preventDefault(); drop.classList.add('over'); };
+  drop.ondragleave = () => drop.classList.remove('over');
+  drop.ondrop = e => { e.preventDefault(); drop.classList.remove('over'); const file = e.dataTransfer.files[0]; if (file) read(file); };
+}
+
+function runAnalyze(raw) {
+  const cfg = S.config.main || {};
+  const res = KP.analyze(raw, { products: Object.values(S.products).map(p => ({ ...p })), owners: cfg.owners || [], knownEvents: Object.keys(S.events) });
+  const knownQ = new Set(Object.keys(S.questions));
+  res.questions = res.questions.filter(q => !knownQ.has(q.id));
+  res.newOrders = res.events.filter(e => e.kind === 'chat' && e.status === 'ok').length;
+  res.newListLines = res.events.filter(e => e.kind === 'list').length;
+  res.newReview = res.events.filter(e => e.status === 'review').length;
+  res.newQuestions = res.questions.length;
+  if (!res.stats.messages) { toast('대화 형식을 읽지 못했어요. 카톡에서 내보낸 txt인지 확인해 주세요.'); return; }
+  S.analysis = res; render();
+}
+
+async function saveImport() {
+  const A = S.analysis; if (!A || A.saving) return;
+  const writes = [];
+  for (const p of A.changedProducts) { const { id, ...rest } = p; writes.push(['products', id, JSON.parse(JSON.stringify(rest))]); }
+  for (const e of A.events) { const { id, product, ...rest } = e; writes.push(['events', id, rest]); }
+  for (const q of A.questions) { const { id, ...rest } = q; writes.push(['questions', id, { ...rest, status: 'open' }]); }
+  const cfg = { ...(S.config.main || {}) };
+  if (!cfg.owners || !cfg.owners.length) cfg.owners = A.owners;
+  if (!cfg.storeName && A.title) cfg.storeName = A.title.replace(/\s*\d+$/, '');
+  writes.push(['config', 'main', cfg]);
+  A.saving = '저장 중…'; render();
+  try {
+    await putMany(writes, (d, n) => { A.saving = `저장 중 ${d}/${n}`; const b = document.getElementById('saveBtn'); if (b) b.textContent = A.saving; });
+    toast(`저장했어요 · 주문 ${A.newOrders}건, 확인 필요 ${A.newReview}건`);
+    S.analysis = null; S.tab = A.newReview ? 'review' : 'gongu'; S.open = null; render();
+  } catch (e) {
+    A.saving = ''; render();
+    toast(e && e.code === 'quota_exceeded' ? '저장 공간이 가득 찼어요. 오래된 공구를 정리해 주세요.' : e && e.code === 'invalid_argument' ? '이 장부에 쓸 권한이 없어요. 공유한 사람에게 편집 권한을 요청하세요.' : '저장하지 못했어요. 잠시 후 다시 눌러 주세요.');
+  }
+}
+
+
+
+// ===== 오늘 요약 · 수령 안내 · 미입금 =====
+const DAY = 86400000;
+const todayWall = () => { const n = wallNow(); return n - (n % DAY); };
+function pickupDate(p) {
+  const tx = p.pickup || ''; const m = tx.match(/(?:(\d{1,2})\s*월\s*)?(\d{1,2})\s*일/); if (!m) return null;
+  const base = new Date(p.lastNoticeAt || p.firstAt || wallNow());
+  let y = base.getUTCFullYear(), mo = m[1] ? +m[1] - 1 : base.getUTCMonth(); const d = +m[2];
+  if (!m[1] && d < base.getUTCDate() - 3) mo++;
+  return Date.UTC(y, mo, d);
+}
+function pickupState(p) { const d = pickupDate(p); if (d == null) return null; const t = todayWall(); return d < t ? 'past' : d === t ? 'today' : d === t + DAY ? 'tomorrow' : 'later'; }
+const PS_LABEL = { past: '수령 중', today: '오늘 수령', tomorrow: '내일 수령', later: '' };
+function unpaidList(C) { return custAgg(C).map(c => { const os = c.orders.filter(o => !o.r.paid && o.r.amount); return { c, os, sum: os.reduce((a, o) => a + o.r.amount, 0) }; }).filter(x => x.os.length).sort((a, b) => b.sum - a.sum); }
+function summaryBar(C) {
+  const nRev = C.review.length + Object.values(S.questions).filter(q => q.status !== 'done').length;
+  const pick = productsArr().filter(p => ['past', 'today'].includes(pickupState(p)) && rowsFor(C, p).some(r => !r.picked));
+  const up = unpaidList(C); const upSum = up.reduce((a, x) => a + x.sum, 0);
+  const item = (act, v, cls, big, small) => `<button class="sum ${cls}" data-act="${act}" data-v="${v}"><b>${big}</b><span>${small}</span></button>`;
+  return `<div class="sumbar">
+    ${item('tab', 'review', nRev ? 'warn' : '', nRev + '건', '확인할 것')}
+    ${item('sub', 'pickups', pick.length ? 'acc' : '', pick.length + '개', '지금 수령 공구')}
+    ${item('sub', 'unpaid', up.length ? 'warn' : '', up.length + '명', '미입금 ' + (upSum ? won(upSum) : ''))}
+  </div>`;
+}
+function notPicked(C, p) { return rowsFor(C, p).filter(r => !r.picked); }
+function mentionText(C, p) {
+  const rows = notPicked(C, p);
+  return `📦 ${p.name} 수령 안내${p.pickup ? ' (' + p.pickup + ')' : ''}\n아직 안 가져가신 분들 편하실 때 들러 주세요 🙏\n` + rows.map(r => '@' + (r.nick || r.key)).join(' ');
+}
+function unpaidText(C) {
+  return '💳 입금 확인 부탁드려요\n' + unpaidList(C).map(x => `${x.c.key}  ${won(x.sum)}  (${x.os.map(o => o.p.name.replace(/\s*\d+종$/, '')).join(', ')})`).join('\n');
+}
+function viewPickups(C) {
+  const ps = productsArr().filter(p => pickupState(p) && pickupState(p) !== 'later').sort((a, b) => (pickupDate(a) || 0) - (pickupDate(b) || 0));
+  return `<div class="row"><button class="btn sm ghost" data-act="sub" data-v="">← 돌아가기</button></div>
+    <div class="pname">수령 안내</div>
+    <div class="small muted">수령일이 오늘이거나 지난 공구, 내일 수령할 공구예요. 아직 안 가져간 손님을 @멘션 문구로 복사해 채팅방에 붙여넣으세요.</div>
+    ${ps.length ? ps.map(p => { const all = rowsFor(C, p), rest = notPicked(C, p); const st = pickupState(p);
+      return `<section class="card" style="display:grid;gap:10px">
+        <div class="row"><div class="pname grow">${esc(p.name)}</div><span class="chip ${st === 'tomorrow' ? '' : 'acc'}">${PS_LABEL[st]}</span></div>
+        <div class="facts"><span>수령 <b>${esc(p.pickup)}</b></span><span>받아감 <b>${all.length - rest.length}/${all.length}</b>명</span></div>
+        ${rest.length ? `<div class="cands">${rest.map(r => `<button data-act="pickGo" data-v="${esc(r.key)}">${esc(r.key)}<small>${esc(itemsText(p, r.items))}</small></button>`).join('')}</div>
+        <button class="bigbtn" data-act="copyMention" data-v="${esc(p.id)}">안 온 손님 ${rest.length}명 @멘션 복사</button>` : `<div class="money ok"><span>모두 받아갔어요</span><b>✓</b></div>`}
+      </section>`; }).join('') : '<div class="card empty">수령할 공구가 없어요. 공구 상품 정보에 수령일(예: 28일)이 있어야 여기에 나와요.</div>'}`;
+}
+function viewUnpaid(C) {
+  const up = unpaidList(C); const sum = up.reduce((a, x) => a + x.sum, 0);
+  return `<div class="row"><button class="btn sm ghost" data-act="sub" data-v="">← 돌아가기</button></div>
+    <div class="pname">미입금 손님</div>
+    ${up.length ? `<div class="money"><span>${up.length}명 합계</span><b>${won(sum)}</b></div>
+    <button class="bigbtn" data-act="copyUnpaid">채팅방에 올릴 미입금 목록 복사</button>
+    <section class="card sheetlist">${up.map(x => `<div class="orow">
+      <span class="tag">${esc(x.c.key)}</span>
+      <div class="who"><div class="items">${won(x.sum)}</div><div class="nick">${esc(x.c.nick || '')} · ${x.os.map(o => esc(o.p.name)).join(', ')}</div></div>
+      <button class="btn sm" data-act="payAll" data-k="${esc(x.c.key)}" data-ps="${esc(x.os.map(o => o.p.id).join(','))}">입금 확인</button>
+    </div>`).join('')}</section>` : '<div class="card empty"><div class="pname">미입금 손님이 없어요</div>모두 입금 확인됐어요.</div>'}`;
+}
+// ===== 수령 (카운터) =====
+function viewPick(C) {
+  const all = custAgg(C);
+  if (!all.length) return emptyBook();
+  const q = S.pick.trim();
+  let html = (S.pick ? '' : summaryBar(C)) + `<section class="card" style="display:grid;gap:12px">
+    <div style="font-size:18px;font-weight:800">손님 번호를 누르세요</div>
+    <input class="pick-in" id="pickIn" inputmode="numeric" autocomplete="off" placeholder="닉네임 뒤 숫자" value="${esc(q)}">
+    <div class="keypad">${['1','2','3','4','5','6','7','8','9'].map(n => `<button data-act="key" data-v="${n}">${n}</button>`).join('')}<button class="fn" data-act="key" data-v="clr">지우기</button><button data-act="key" data-v="0">0</button><button class="fn" data-act="key" data-v="del">⌫</button></div>
+  </section>`;
+  if (!q) return html + `<div class="small muted" style="text-align:center">가게에 온 손님이 번호(예: 8360)를 말하면 눌러 주세요.<br>그 손님 주문이 크게 나와요.</div>`;
+  const exact = all.find(c => c.key === q);
+  const cands = exact ? [exact] : all.filter(c => c.key.includes(q) || (c.nick || '').includes(q));
+  if (!cands.length) return html + `<div class="card empty" style="font-size:18px;display:grid;gap:12px">${esc(q)}번 손님의 주문이 없어요.<button class="bigbtn" data-act="newCust" data-k="${esc(q)}">${esc(q)}번 손님 등록하고 주문 넣기</button></div>`;
+  if (cands.length > 1 && !exact) return html + `<div class="card" style="display:grid;gap:10px"><b>누구인가요?</b><div class="cands">${cands.slice(0, 12).map(c => `<button data-act="pickKey" data-v="${esc(c.key)}">${esc(c.key)}<small>${esc(c.nick || '')}</small></button>`).join('')}</div></div>`;
+  const c = cands[0];
+  if (!c.orders.length) return html + `<section class="card" style="display:grid;gap:10px"><div class="who-big"><span class="key">${esc(c.key)}</span><span class="nm">${esc(c.nick || '')}</span></div><div style="font-size:18px">아직 주문이 없어요.</div><button class="bigbtn" data-act="openCust" data-k="${esc(c.key)}">주문 넣기</button></section>`;
+  const orders = c.orders.slice().sort((a, b) => a.r.picked - b.r.picked);
+  const todo = orders.filter(o => !o.r.picked);
+  const unpaid = orders.filter(o => !o.r.paid && !o.r.picked).reduce((a, o) => a + (o.r.amount || 0), 0);
+  const memo = (S.customers[custId(c.key)] || {}).memo;
+  return html + `<section class="card" style="display:grid;gap:8px">
+    <div class="who-big"><span class="key">${esc(c.key)}</span><span class="nm">${esc(c.nick || '')}</span></div>
+    ${memo ? `<div class="ai">📝 ${esc(memo)}</div>` : ''}
+    ${todo.length ? (unpaid ? `<div class="money"><span>받을 돈</span><b>${won(unpaid)}</b></div>` : `<div class="money ok"><span>입금</span><b>완료</b></div>`) : `<div class="money ok"><span>모두 받아갔어요</span><b>✓</b></div>`}
+    ${orders.map(o => `<div class="pitem ${o.r.picked ? 'done' : ''}">
+      <div><div class="pn">${esc(o.p.name)}${o.p.pickup ? ' · 수령 ' + esc(o.p.pickup) : ''}</div><div class="pq">${esc(itemsText(o.p, o.r.items))}</div>
+        <div class="small ${o.r.paid ? 'muted' : ''}" style="${o.r.paid ? '' : 'color:var(--warn);font-weight:700'}">${o.r.amount ? won(o.r.amount) + ' · ' : ''}${o.r.paid ? '입금 완료' : '입금 전'}</div></div>
+      <button class="bigbtn ${o.r.picked ? 'done' : ''}" data-act="pickOne" data-p="${esc(o.p.id)}" data-k="${esc(c.key)}">${o.r.picked ? '✓ 받아감' : '수령'}</button>
+    </div>`).join('')}
+    ${todo.length > 1 || (todo.length && unpaid) ? `<div style="display:grid;gap:8px;margin-top:6px">
+      ${unpaid ? `<button class="bigbtn" style="background:var(--warn)" data-act="pickAll" data-pay="1" data-k="${esc(c.key)}" data-ps="${esc(todo.map(o => o.p.id).join(','))}">돈 받고 전부 수령 (${won(unpaid)})</button>
+      <button class="btn" data-act="payAll" data-k="${esc(c.key)}" data-ps="${esc(todo.map(o => o.p.id).join(','))}">입금만 확인</button>` : `<button class="bigbtn" data-act="pickAll" data-k="${esc(c.key)}" data-ps="${esc(todo.map(o => o.p.id).join(','))}">전부 수령 완료</button>`}
+    </div>` : ''}
+    <button class="btn ghost" data-act="key" data-v="clr" style="margin-top:4px">다음 손님</button>
+  </section>`;
+}
+// ===== 시트 (주문 수정, 상품 수정, 손님) =====
+function openSheet(s) { S.sheet = s; render(); }
+function closeSheet() { S.sheet = null; const l = document.getElementById('layer'); l.innerHTML = ''; l.dataset.sig = ''; }
+function renderSheet(C) {
+  const s = S.sheet; let html = '';
+  if (s.type === 'order') {
+    const p = S.products[s.pid]; const r = s.key ? rowsFor(C, p).find(x => x.key === s.key) : null;
+    const pre = s.preKey ? custAgg(C).find(x => x.key === s.preKey) : null;
+    const opts = (p.options || []).length ? p.options.map(o => o.name) : [''];
+    html = `<h3>${s.key ? '주문 수정' : '주문 추가'}</h3><div class="small muted">${esc(p.name)}</div>
+      ${s.key || s.preKey ? `<div class="row"><span class="tag">${esc(s.key || s.preKey)}</span><span>${esc(r ? r.nick : pre ? pre.nick : '')}</span></div>` : `<div class="row"><label class="field grow">손님 번호<input id="sKey" inputmode="numeric" placeholder="닉네임 뒤 4자리"></label><label class="field grow">닉네임 (선택)<input id="sNick"></label></div>`}
+      <div class="qtys">${opts.map(o => `<label class="field">${esc(o || '수량')}<input type="number" inputmode="numeric" min="0" data-opt="${esc(o)}" value="${esc(r ? (r.items[o] ?? '') : '')}"></label>`).join('')}</div>
+      <div class="row"><button class="btn pri grow" data-act="saveOrder">저장</button>${s.key ? '<button class="btn warn" data-act="cancelOrder">주문 취소</button>' : ''}<button class="btn" data-act="close">닫기</button></div>
+      ${r ? `<div class="hist"><b>기록</b>${r.history.slice().reverse().map(e => `<div><span class="muted num">${fmtT(e.t)}</span><span>${e.kind === 'list' ? '사장님 목록: ' : e.kind === 'manual' ? '직접 수정: ' : ''}${esc(e.kind === 'manual' ? itemsText(p, e.items) + (e.mode === 'cancel' ? ' 취소' : '') : e.raw)}</span></div>`).join('')}</div>` : ''}`;
+  } else if (s.type === 'product' && !s.pid) {
+    html = `<h3>새 공구 만들기</h3>
+      <label class="field">상품 이름 *<input id="nName" placeholder="예: 리얼 한입만두"></label>
+      <label class="field">가격 (원, 1개 기준)<input id="nPrice" type="number" inputmode="numeric" placeholder="예: 1400"></label>
+      <label class="field">종류가 여러 개면 쉼표로 (없으면 비워 두세요)<input id="nOpt" placeholder="예: 고기, 김치"></label>
+      <div class="row"><label class="field grow">예약 마감<input id="nDl" placeholder="예: 26일 오전 9시"></label><label class="field grow">수령일<input id="nPu" placeholder="예: 28일"></label></div>
+      <div class="row"><button class="btn pri grow" data-act="createProduct">공구 만들기</button><button class="btn" data-act="close">닫기</button></div>`;
+  } else if (s.type === 'product') {
+    const p = S.products[s.pid];
+    html = `<h3>상품 정보</h3>
+      <label class="field">상품 이름<input id="pName" value="${esc(p.name)}"></label>
+      <div class="row"><label class="field grow">단가 (원, 1개 기준)<input id="pPrice" type="number" inputmode="numeric" value="${esc(p.price || '')}"></label></div>
+      <div class="row"><label class="field grow">예약 마감<input id="pDl" value="${esc(p.deadline || '')}"></label><label class="field grow">수령<input id="pPu" value="${esc(p.pickup || '')}"></label></div>
+      <details><summary>종류·카톡 인식 설정</summary><div style="display:grid;gap:10px;margin-top:10px">
+      <label class="field">종류 (한 줄에 하나: 이름 = 줄임말, 줄임말)<textarea id="pOpt" rows="3">${esc((p.options || []).map(o => o.name + ' = ' + o.aliases.filter(a => a !== o.name).join(', ')).join('\n'))}</textarea></label>
+      <label class="field">손님이 부르는 이름 (쉼표로 구분, 이 단어가 들어간 카톡을 이 상품 주문으로 봐요)<input id="pKw" value="${esc((p.keywords || []).join(', '))}"></label>
+      <div class="small muted">바꾼 내용은 다음 가져오기부터 반영돼요.</div></div></details>
+      <div class="row"><button class="btn pri grow" data-act="saveProduct">저장</button><button class="btn" data-act="toggleClose">${p.closedAt ? '다시 모집 중으로' : '마감 처리'}</button><button class="btn" data-act="close">닫기</button></div>`;
+  } else if (s.type === 'cust' && s.isNew) {
+    html = `<h3>손님 등록</h3>
+      <label class="field">손님 번호 * (카톡 닉네임 뒤 숫자)<input id="cKey" inputmode="numeric" value="${esc(s.key || '')}" placeholder="예: 8360"></label>
+      <label class="field">닉네임 또는 이름<input id="cNick" placeholder="예: 감동8360"></label>
+      <label class="field">전화번호 (선택)<input id="cPhone" type="tel" inputmode="tel" placeholder="010-0000-0000"></label>
+      <label class="field">메모 (선택)<textarea id="cMemo" rows="2" placeholder="예: 저녁 7시 이후 수령"></textarea></label>
+      <div class="row"><button class="btn pri grow" data-act="saveCust">등록하고 주문 넣기</button><button class="btn" data-act="close">닫기</button></div>`;
+  } else if (s.type === 'cust') {
+    const c = custAgg(C).find(x => x.key === s.key); const cd = S.customers[custId(s.key)] || {}; const memo = cd.memo || '';
+    const openPs = productsArr().filter(p => !p.closedAt && !(c && c.orders.some(o => o.p.id === p.id)));
+    html = `<div class="row"><span class="tag">${esc(s.key)}</span><h3 class="grow">${esc(c ? c.nick : s.key)}</h3></div>
+      ${c ? `<div class="sheetlist">${c.orders.map(o => `<div class="orow"><span class="chip">${o.p.closedAt ? '마감' : '모집'}</span><div class="who"><div class="items">${esc(o.p.name)}</div><div class="nick">${esc(itemsText(o.p, o.r.items))}</div></div><div class="amt">${o.r.amount ? won(o.r.amount) : ''}</div><div class="acts"><button class="tog" aria-pressed="${o.r.paid}" data-act="toggle" data-f="paid" data-p="${esc(o.p.id)}" data-k="${esc(s.key)}">입금</button><button class="tog" aria-pressed="${o.r.picked}" data-act="toggle" data-f="picked" data-p="${esc(o.p.id)}" data-k="${esc(s.key)}">수령</button></div></div>`).join('')}</div>
+      <div class="row"><b class="grow">합계</b><b class="num">${won(c.amount)}</b></div>` : ''}
+      ${openPs.length ? `<div style="display:grid;gap:8px"><b>주문 넣기</b><div class="cands">${openPs.map(p => `<button data-act="custOrder" data-p="${esc(p.id)}" data-k="${esc(s.key)}">＋ ${esc(p.name)}</button>`).join('')}</div></div>` : ''}
+      <details><summary>손님 정보·메모</summary><div style="display:grid;gap:10px;margin-top:10px">
+      <label class="field">닉네임 또는 이름<input id="cNick" value="${esc(cd.nick || (c ? c.nick : ''))}"></label>
+      <label class="field">전화번호<input id="cPhone" type="tel" inputmode="tel" value="${esc(cd.phone || '')}"></label>
+      <label class="field">메모 (직원끼리 공유돼요)<textarea id="cMemo" rows="2" placeholder="예: 저녁 7시 이후 수령, 계좌이체">${esc(memo)}</textarea></label>
+      <button class="btn pri" data-act="saveMemo">저장</button></div></details>
+      <button class="btn" data-act="close">닫기</button>`;
+  }
+  const layer = document.getElementById('layer');
+  const focusId = document.activeElement && layer.contains(document.activeElement) ? document.activeElement.id : null;
+  if (layer.dataset.sig === JSON.stringify(s) && layer.firstChild) return; // 열려 있는 시트는 다시 그리지 않음(입력값 보존)
+  layer.dataset.sig = JSON.stringify(s);
+  layer.innerHTML = `<div class="scrim" data-act="scrim"><div class="sheet" role="dialog" aria-modal="true">${html}</div></div>`;
+}
+function sheetItems(root) { const it = {}; root.querySelectorAll('[data-opt]').forEach(i => { const v = parseInt(i.value, 10); if (v > 0) it[i.dataset.opt] = v; }); return it; }
+
+let toastT = 0;
+function toast(msg, undo) {
+  let t = document.querySelector('.toast'); if (!t) { t = document.createElement('div'); t.className = 'toast'; t.setAttribute('role', 'status'); document.body.appendChild(t); }
+  t.textContent = msg;
+  if (undo) { const b = document.createElement('button'); b.textContent = '되돌리기'; b.onclick = async () => { t.remove(); await undo(); render(); }; t.appendChild(b); }
+  clearTimeout(toastT); toastT = setTimeout(() => t.remove(), undo ? 6000 : 3200);
+}
+async function setStatus(pid, key, patch, label) {
+  const id = statusId(pid, key); const prev = S.status[id] ? { ...S.status[id] } : { pid, key };
+  await put('status', id, { ...prev, ...patch, pid, key, at: Date.now() });
+  if (label) toast(label, () => put('status', id, prev));
+}
+
+async function copyText(txt) {
+  try { await navigator.clipboard.writeText(txt); toast('복사했어요. 채팅방에 붙여넣으세요.'); }
+  catch (e) { S.sheet = null; const layer = document.getElementById('layer'); layer.innerHTML = `<div class="scrim" data-act="scrim"><div class="sheet"><h3>목록</h3><textarea class="paste" id="copyBox" rows="12">${esc(txt)}</textarea><div class="small muted">자동 복사가 막혀 있어요. 글자를 길게 눌러 전체 선택 후 복사하세요.</div><button class="btn" data-act="close">닫기</button></div></div>`; const b = document.getElementById('copyBox'); b.focus(); b.select(); }
+}
+function listText(C, p) {
+  const rows = rowsFor(C, p);
+  const head = p.name + (p.price ? ' ' + won(p.price).replace('원', '') + '원' : '');
+  return head + '\n' + rows.map(r => {
+    const ent = Object.entries(r.items).filter(([, v]) => v > 0);
+    if (ent.length === 1 && ent[0][0] === '') return `${r.key}/${ent[0][1]}`;
+    return `${r.key} ` + ent.map(([k, v]) => `${shortOpt(p, k)}${v}`).join(' ');
+  }).join('\n');
+}
+
+async function askAI(C) {
+  const btn = document.getElementById('aiBtn'), note = document.getElementById('aiNote');
+  const sample = window.claude && window.claude.use ? await window.claude.use('sample').catch(() => null) : null;
+  if (!sample) { note.textContent = '이 화면에서는 AI를 쓸 수 없어요. 직접 확인해 주세요.'; btn.hidden = true; return; }
+  btn.disabled = true; btn.textContent = 'AI가 읽는 중…';
+  const prods = productsArr().map(p => ({ id: p.id, name: p.name, options: (p.options || []).map(o => o.name), aliases: p.keywords.slice(0, 6) }));
+  const items = C.review.slice(0, 40).map(e => ({ id: e.id, customer: e.key, nick: e.nick, time: fmtT(e.t), message: e.raw, guess: { productId: e.productId, items: e.items } }));
+  const prompt = `편의점 사장님이 카카오톡 오픈채팅으로 공동구매 주문을 받고 있어. 아래 메시지들은 자동 해석이 애매했던 것들이야. 각 메시지가 실제 주문인지, 어떤 상품을 몇 개 주문한 건지 판단해줘.
+
+상품 목록(JSON): ${JSON.stringify(prods)}
+
+규칙:
+- 옵션이 있는 상품은 items의 키를 옵션 이름 그대로 쓰고, 옵션이 없는 상품은 키를 빈 문자열 "" 로 써.
+- "추가", "더" 처럼 기존 주문에 더하는 말이면 mode "add", 취소면 "cancel", 그 외 주문이면 "set".
+- 잡담, 질문만 있는 메시지, 사장님 목록의 오타처럼 판단이 어려우면 action "ignore" 대신 가장 그럴듯한 해석을 주고 note에 이유를 짧게 적어. 확실히 주문이 아니면 action "ignore".
+- "2종", "두가지"는 모든 옵션에 같은 수량.
+
+메시지(JSON): ${JSON.stringify(items)}
+
+답은 JSON 배열만: [{"id": "...", "action": "order" 또는 "ignore", "productId": "...", "items": {"옵션": 수량}, "mode": "set", "note": "한국어로 짧게"}]`;
+  try {
+    const out = await sample.json(prompt, { modelTier: 'default' });
+    let n = 0; if (Array.isArray(out)) for (const o of out) if (o && o.id && S.events[o.id]) { S.ai[o.id] = { action: o.action === 'ignore' ? 'ignore' : 'order', productId: S.products[o.productId] ? o.productId : S.events[o.id].productId, items: o.items && typeof o.items === 'object' ? o.items : {}, mode: ['set', 'add', 'cancel'].includes(o.mode) ? o.mode : 'set', note: String(o.note || '').slice(0, 80) }; n++; }
+    toast(`AI가 ${n}건을 판단했어요. 확인 후 확정하세요.`); render();
+  } catch (e) {
+    btn.disabled = false; btn.textContent = 'AI에게 한꺼번에 물어보기';
+    note.textContent = e.code === 'not_granted' || e.code === 'sampling_disabled' ? 'AI 사용이 허용되지 않았어요. 직접 확인해 주세요.' : e.code === 'rate_limited' ? 'AI 사용량이 많아요. 잠시 후 다시 눌러 주세요.' : 'AI 답을 받지 못했어요. 다시 눌러 주세요.';
+    if (e.code === 'not_granted' || e.code === 'sampling_disabled') btn.hidden = true;
+  }
+}
+
+// ===== 클릭 처리 =====
+document.addEventListener('click', async ev => {
+  const el = ev.target.closest('[data-act]'); if (!el) return;
+  const a = el.dataset.act, v = el.dataset.v;
+  if (a === 'scrim') { if (ev.target === el) closeSheet(); return; }
+  const C = compute();
+  try {
+    if (a === 'tab') { S.tab = v; S.open = null; S.sub = ''; render(); window.scrollTo(0, 0); }
+    else if (a === 'sub') { S.sub = v; render(); window.scrollTo(0, 0); }
+    else if (a === 'pickGo') { S.sub = ''; S.tab = 'pick'; S.pick = v; render(); window.scrollTo(0, 0); }
+    else if (a === 'copyMention') copyText(mentionText(C, S.products[v]));
+    else if (a === 'copyUnpaid') copyText(unpaidText(C));
+    else if (a === 'filter') { S.filter = v; render(); }
+    else if (a === 'open') { S.open = v; render(); window.scrollTo(0, 0); }
+    else if (a === 'back') { S.open = null; render(); }
+    else if (a === 'toggle') {
+      const cur = S.status[statusId(el.dataset.p, el.dataset.k)] || {}; const f = el.dataset.f; const on = !cur[f];
+      el.setAttribute('aria-pressed', String(on));
+      await setStatus(el.dataset.p, el.dataset.k, { [f]: on }, `${el.dataset.k} ${f === 'paid' ? '입금' : '수령'} ${on ? '체크' : '해제'}`); render();
+    }
+    else if (a === 'key') { S.pick = v === 'del' ? S.pick.slice(0, -1) : v === 'clr' ? '' : (S.pick + v).slice(0, 8); render(); }
+    else if (a === 'pickKey') { S.pick = v; render(); }
+    else if (a === 'pickOne' || a === 'pickAll') {
+      const key = el.dataset.k; const pids = a === 'pickOne' ? [el.dataset.p] : el.dataset.ps.split(',');
+      const prevs = pids.map(pid => [pid, S.status[statusId(pid, key)] ? { ...S.status[statusId(pid, key)] } : { pid, key }]);
+      const on = a === 'pickAll' ? true : !(S.status[statusId(el.dataset.p, key)] || {}).picked;
+      for (const pid of pids) await put('status', statusId(pid, key), { ...(S.status[statusId(pid, key)] || {}), pid, key, picked: on, ...(el.dataset.pay ? { paid: true } : {}), at: Date.now() });
+      toast(on ? `${key}번 수령 완료` : `${key}번 수령 취소`, async () => { for (const [pid, p] of prevs) await put('status', statusId(pid, key), p); });
+      render();
+    }
+    else if (a === 'payAll') {
+      const key = el.dataset.k; const pids = el.dataset.ps.split(',');
+      const prevs = pids.map(pid => [pid, S.status[statusId(pid, key)] ? { ...S.status[statusId(pid, key)] } : { pid, key }]);
+      for (const pid of pids) await put('status', statusId(pid, key), { ...(S.status[statusId(pid, key)] || {}), pid, key, paid: true, at: Date.now() });
+      toast(`${key}번 입금 확인`, async () => { for (const [pid, p] of prevs) await put('status', statusId(pid, key), p); });
+      render();
+    }
+    else if (a === 'copyList') copyText(listText(C, S.products[v]));
+    else if (a === 'addOrder') openSheet({ type: 'order', pid: v });
+    else if (a === 'editOrder') openSheet({ type: 'order', pid: el.dataset.p, key: el.dataset.k });
+    else if (a === 'editProduct') openSheet({ type: 'product', pid: v });
+    else if (a === 'openCust') openSheet({ type: 'cust', key: el.dataset.k });
+    else if (a === 'close') closeSheet();
+    else if (a === 'saveOrder' || a === 'cancelOrder') {
+      const s = S.sheet; const root = document.querySelector('.sheet');
+      const key = s.key || s.preKey || (document.getElementById('sKey').value || '').trim();
+      if (!key) { toast('손님 번호를 넣어 주세요.'); return; }
+      const nick = s.key ? '' : s.preKey ? ((S.customers[custId(key)] || {}).nick || '') : (document.getElementById('sNick').value || '').trim();
+      const items = sheetItems(root);
+      const mode = a === 'cancelOrder' ? 'cancel' : 'set';
+      if (mode === 'set' && !sumItems(items)) { toast('수량을 넣어 주세요. 주문을 지우려면 주문 취소를 누르세요.'); return; }
+      const t = wallNow();
+      await put('events', 'm' + H(s.pid + key + t), { t, kind: 'manual', key, nick, productId: s.pid, items, mode, raw: '', status: 'ok' });
+      closeSheet(); toast(mode === 'cancel' ? '주문을 취소했어요.' : '저장했어요.'); render();
+    }
+    else if (a === 'saveProduct' || a === 'toggleClose') {
+      const p = { ...S.products[S.sheet.pid] }; const id = S.sheet.pid; delete p.id;
+      if (a === 'saveProduct') {
+        p.name = document.getElementById('pName').value.trim() || p.name;
+        const pr = parseInt(document.getElementById('pPrice').value, 10); p.price = pr > 0 ? pr : null;
+        p.deadline = document.getElementById('pDl').value.trim(); p.pickup = document.getElementById('pPu').value.trim();
+        p.keywords = document.getElementById('pKw').value.split(',').map(s => s.trim()).filter(Boolean);
+        p.options = document.getElementById('pOpt').value.split('\n').map(l => l.trim()).filter(Boolean).map(l => { const [n, al] = l.split('='); const name = n.trim(); return { name, aliases: [name, ...(al || '').split(',').map(s => s.trim()).filter(Boolean)] }; });
+      } else p.closedAt = p.closedAt ? null : wallNow();
+      await put('products', id, p); closeSheet(); toast('저장했어요.'); render();
+    }
+    else if (a === 'saveMemo') { const key = S.sheet.key; const cd = S.customers[custId(key)] || {}; await put('customers', custId(key), { ...cd, key, nick: document.getElementById('cNick').value.trim(), phone: document.getElementById('cPhone').value.trim(), memo: document.getElementById('cMemo').value.trim(), at: Date.now() }); closeSheet(); toast('저장했어요.'); render(); }
+    else if (a === 'newCust') openSheet({ type: 'cust', isNew: true, key: el.dataset.k || '' });
+    else if (a === 'saveCust') {
+      const key = document.getElementById('cKey').value.replace(/\s/g, '');
+      if (!key) { toast('손님 번호를 넣어 주세요.'); return; }
+      const cd = S.customers[custId(key)] || {};
+      await put('customers', custId(key), { ...cd, key, nick: document.getElementById('cNick').value.trim() || cd.nick || '', phone: document.getElementById('cPhone').value.trim(), memo: document.getElementById('cMemo').value.trim() || cd.memo || '', createdAt: cd.createdAt || wallNow(), at: Date.now() });
+      closeSheet(); toast(`${key}번 손님을 등록했어요.`); openSheet({ type: 'cust', key });
+    }
+    else if (a === 'custOrder') { openSheet({ type: 'order', pid: el.dataset.p, preKey: el.dataset.k }); }
+    else if (a === 'newProduct') openSheet({ type: 'product', pid: null });
+    else if (a === 'createProduct') {
+      const name = document.getElementById('nName').value.trim();
+      if (!name) { toast('상품 이름을 넣어 주세요.'); return; }
+      const pr = parseInt(document.getElementById('nPrice').value, 10);
+      const optNames = document.getElementById('nOpt').value.split(/[,，]/).map(x => x.trim()).filter(Boolean);
+      const t = wallNow(); const id = 'p' + H(name + t);
+      const kws = KP.keywordsFor(name); const compact = name.replace(/\s/g, ''); if (compact.length >= 2 && !kws.includes(compact)) kws.unshift(compact);
+      await put('products', id, { name, price: pr > 0 ? pr : null, options: optNames.length ? KP.buildOptions(optNames) : [], keywords: kws, deadline: document.getElementById('nDl').value.trim(), pickup: document.getElementById('nPu').value.trim(), firstAt: t, lastNoticeAt: t, createdAt: t, src: 'manual' });
+      closeSheet(); S.tab = 'gongu'; S.sub = ''; S.filter = 'open'; S.open = id; toast('공구를 만들었어요. 주문 추가로 손님 주문을 넣으세요.'); render(); window.scrollTo(0, 0);
+    }
+    else if (a === 'confirmRev' || a === 'ignoreRev') {
+      const e = { ...S.events[v] }; const card = document.querySelector(`[data-rev="${CSS.escape(v)}"]`);
+      if (a === 'confirmRev') {
+        e.productId = card.querySelector('[data-f=product]').value; e.mode = card.querySelector('[data-f=mode]').value;
+        const p = S.products[e.productId]; const items = sheetItems(card);
+        const opts = (p.options || []).map(o => o.name);
+        e.items = opts.length ? items : { '': sumItems(items) };
+        if (e.mode !== 'cancel' && !sumItems(e.items)) { toast('수량을 넣어 주세요.'); return; }
+        e.status = 'ok';
+      } else e.status = 'ignored';
+      e.reviewedAt = Date.now(); delete S.ai[v];
+      await put('events', v, e); toast(a === 'confirmRev' ? '주문표에 넣었어요.' : '주문이 아닌 걸로 처리했어요.'); render();
+    }
+    else if (a === 'doneQ') { await put('questions', v, { ...S.questions[v], status: 'done' }); render(); }
+    else if (a === 'askAI') askAI(C);
+    else if (a === 'analyzePaste') { const t = document.getElementById('paste').value; if (t.trim()) runAnalyze(t); }
+    else if (a === 'saveImport') saveImport();
+    else if (a === 'clearImport') { S.analysis = null; render(); }
+    else if (a === 'saveCfg') {
+      const cfg = { ...(S.config.main || {}), storeName: document.getElementById('cfgName').value.trim(), owners: document.getElementById('cfgOwners').value.split(',').map(s => s.trim()).filter(Boolean) };
+      await put('config', 'main', cfg); toast('설정을 저장했어요.'); render();
+    }
+  } catch (e) {
+    toast(e && e.code === 'invalid_argument' ? '이 장부에 쓸 권한이 없어요.' : '저장하지 못했어요. 다시 시도해 주세요.');
+  }
+});
+document.getElementById('tabs').addEventListener('click', e => { const b = e.target.closest('button[data-tab]'); if (b) { S.tab = b.dataset.tab; S.open = null; S.sub = ''; render(); window.scrollTo(0, 0); } });
+document.addEventListener('input', e => { if (e.target.id === 'pickIn') { S.pick = e.target.value.replace(/\s/g, ''); render(); const q = document.getElementById('pickIn'); q.focus(); const n = q.value.length; try { q.setSelectionRange(n, n); } catch (_) {} return; } if (e.target.id === 'q') { S.q = e.target.value; const pos = e.target.selectionStart; render(); const q = document.getElementById('q'); q.focus(); try { q.setSelectionRange(pos, pos); } catch (_) {} } });
+document.addEventListener('focusout', e => { if (S.dirty && e.target.closest && e.target.closest('[data-rev]')) setTimeout(() => { if (!document.activeElement || !document.activeElement.closest('[data-rev]')) schedule(); }, 0); });
+document.addEventListener('keydown', e => { if (e.key === 'Escape' && S.sheet) closeSheet(); });
+const SIZES = [[1, '가 크게'], [1.15, '가 더 크게'], [1.3, '가 보통']];
+let sizeI = 0; try { sizeI = +(localStorage.getItem('gongu-size') || 0) % 3; } catch (e) {}
+function applySize() { document.documentElement.style.setProperty('--z', SIZES[sizeI][0]); document.getElementById('sizeBtn').textContent = SIZES[sizeI][1]; }
+document.getElementById('sizeBtn').addEventListener('click', () => { sizeI = (sizeI + 1) % 3; try { localStorage.setItem('gongu-size', sizeI); } catch (e) {} applySize(); toast(['보통 크기', '큰 글씨', '아주 큰 글씨'][sizeI]); });
+applySize();
+// ===== 앱 전용: 로그인·초대·설치 =====
+let installEvt = null;
+window.addEventListener('beforeinstallprompt', e => { e.preventDefault(); installEvt = e; schedule(); });
+window.addEventListener('appinstalled', () => { installEvt = null; toast('홈 화면에 공구장부를 설치했어요.'); schedule(); });
+const isStandalone = () => matchMedia('(display-mode: standalone)').matches || navigator.standalone;
+const appLink = () => location.origin + location.pathname.replace(/index\.html$/, '');
+
+function membersCard() {
+  const members = (S.store && S.store.members) || [];
+  return `<section class="card" style="display:grid;gap:10px">
+    <b>함께 쓰는 사람</b>
+    <div class="sheetlist">${members.map(m => `<div class="row" style="padding:8px 0;border-top:1px solid var(--line)"><span class="grow" style="overflow-wrap:anywhere">${esc(m)}${m === myEmail() ? ' <span class="chip acc">나</span>' : ''}</span>${m !== myEmail() ? `<button class="btn sm warn" data-act="uninvite" data-v="${esc(m)}">빼기</button>` : ''}</div>`).join('')}</div>
+    <label class="field">초대할 사람의 구글 이메일<input id="invEmail" type="email" inputmode="email" autocomplete="off" placeholder="example@gmail.com"></label>
+    <button class="btn pri" data-act="invite">초대하기</button>
+    <div class="small muted">초대한 다음 앱 주소를 카톡으로 보내 주세요. 그 이메일로 로그인하면 같은 장부가 보여요.</div>
+    <button class="btn" data-act="copyLink">앱 주소 복사</button>
+    ${S.stores.length > 1 ? `<label class="field">다른 장부 열기<select id="storeSel">${S.stores.map(s => `<option value="${esc(s.id)}" ${S.store && s.id === S.store.id ? 'selected' : ''}>${esc(s.name || s.id)}</option>`).join('')}</select></label><button class="btn" data-act="switchStore">이 장부 열기</button>` : ''}
+    ${installEvt && !isStandalone() ? '<button class="bigbtn" data-act="install">휴대폰에 앱 설치</button>' : ''}
+    <button class="btn ghost" data-act="logout">로그아웃 (${esc(myEmail())})</button>
+  </section>`;
+}
+
+document.addEventListener('click', async ev => {
+  const el = ev.target.closest('[data-act]'); if (!el) return;
+  const a = el.dataset.act;
+  try {
+    if (a === 'login') login();
+    else if (a === 'logout') { await firebase.auth().signOut(); }
+    else if (a === 'reload') loadStores();
+    else if (a === 'copyEmail') copyText(myEmail());
+    else if (a === 'copyLink') copyText(appLink());
+    else if (a === 'createStore') { const n = document.getElementById('newStore').value.trim(); if (!n) { toast('가게 이름을 넣어 주세요.'); return; } el.disabled = true; await createStore(n); }
+    else if (a === 'invite') { const i = document.getElementById('invEmail'); if (await invite(i.value)) { i.value = ''; } }
+    else if (a === 'uninvite') { if (el.dataset.sure) { await uninvite(el.dataset.v); } else { el.dataset.sure = '1'; el.textContent = '정말 빼기'; } }
+    else if (a === 'switchStore') { openStore(document.getElementById('storeSel').value); }
+    else if (a === 'install' && installEvt) { installEvt.prompt(); await installEvt.userChoice; installEvt = null; render(); }
+  } catch (e) { console.error(e); toast(e && e.code === 'permission-denied' ? '권한이 없어요.' : '처리하지 못했어요. 다시 시도해 주세요.'); }
+});
+
+if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(() => {});
+
+boot();
+</script>
+</body>
+</html>
+
