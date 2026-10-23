@@ -607,6 +607,9 @@ async function putMany(list, onProgress) {
 
 function setSync(on, text) { const el = document.getElementById('sync'); el.innerHTML = `<span class="dot ${on ? 'on' : ''}"></span><span>${esc(text)}</span>`; }
 const myEmail = () => (S.user && S.user.email || '').toLowerCase();
+const isAnon = () => !!(S.user && S.user.isAnonymous);
+const meIn = v => isAnon() ? (v.memberUids || []).includes(S.user.uid) : (v.members || []).includes(myEmail());
+const myName = () => isAnon() ? ((S.store && (S.store.memberNames || {})[S.user.uid]) || '초대번호로 들어온 기기') : myEmail();
 
 async function boot() {
   render();
@@ -623,6 +626,7 @@ async function boot() {
   firebase.auth().onAuthStateChanged(async u => {
     S.user = u;
     if (!u) { closeStore(); S.gate = 'login'; render(); return; }
+    if (S.joining) return; // 초대번호로 들어오는 중에는 joinWithCode가 이어서 처리
     await loadStores();
   });
   window.addEventListener('online', () => setSync(true, '함께 쓰는 중'));
@@ -639,10 +643,10 @@ async function login() {
 async function loadStores() {
   S.gate = 'loading'; render();
   try {
-    const snap = await fsdb.collection('stores').where('members', 'array-contains', myEmail()).get();
+    const snap = isAnon() ? await fsdb.collection('stores').where('memberUids', 'array-contains', S.user.uid).get() : await fsdb.collection('stores').where('members', 'array-contains', myEmail()).get();
     S.stores = snap.docs.map(d => ({ id: d.id, ...d.data() }));
   } catch (e) { console.error(e); S.stores = []; }
-  if (!S.stores.length) { S.gate = 'nostore'; render(); return; }
+  if (!S.stores.length) { if (isAnon()) { await firebase.auth().signOut(); toast('장부에서 빠졌어요. 새 초대번호를 받아 주세요.'); return; } S.gate = 'nostore'; render(); return; }
   const last = lsGet('gongu-store');
   openStore((S.stores.find(s => s.id === last) || S.stores[0]).id);
 }
@@ -655,7 +659,7 @@ function openStore(id) {
     if (!d.exists) return;
     const v = d.data(); S.store = { id: d.id, ...v };
     S.config.main = { storeName: v.name || '', owners: v.owners || [] };
-    if (!(v.members || []).includes(myEmail())) { toast('이 장부에서 빠졌어요.'); closeStore(); loadStores(); return; }
+    if (!meIn(v)) { toast('이 장부에서 빠졌어요.'); closeStore(); loadStores(); return; }
     schedule();
   }, e => { console.error(e); }));
   let pending = new Set(COLS);
@@ -670,6 +674,35 @@ function openStore(id) {
       schedule();
     }, e => { console.error(e); setSync(false, e.code === 'permission-denied' ? '접근 권한 없음' : '연결 끊김'); }));
   }
+}
+// 초대번호: 6자리, 24시간 동안 쓸 수 있어요
+async function makeCode() {
+  for (let i = 0; i < 5; i++) {
+    const code = String(Math.floor(100000 + Math.random() * 900000));
+    const ref = fsdb.collection('invites').doc(code);
+    const ex = await ref.get().catch(() => null);
+    if (ex && ex.exists && ex.data().expiresAt > Date.now()) continue;
+    await ref.set({ storeId: storeRef.id, storeName: (S.store && S.store.name) || '', expiresAt: Date.now() + 86400000, createdAt: Date.now() });
+    return code;
+  }
+  throw new Error('code');
+}
+async function joinWithCode(code, name) {
+  code = code.replace(/\D/g, '');
+  if (code.length !== 6) { toast('초대번호 6자리를 넣어 주세요.'); return; }
+  S.joining = true;
+  try {
+  if (!firebase.auth().currentUser) await firebase.auth().signInAnonymously();
+  const u = firebase.auth().currentUser; S.user = u;
+  const inv = await fsdb.collection('invites').doc(code).get().catch(() => null);
+  if (!inv || !inv.exists || inv.data().expiresAt < Date.now()) { toast('맞지 않거나 시간이 지난 초대번호예요. 새 번호를 받아 주세요.'); if (u.isAnonymous && !S.stores.length) await u.delete().catch(() => firebase.auth().signOut()); return; }
+  const sid = inv.data().storeId;
+  try {
+    await fsdb.collection('stores').doc(sid).update({ memberUids: firebase.firestore.FieldValue.arrayUnion(u.uid), ['memberNames.' + u.uid]: name || '사장님', joinCode: code });
+  } catch (e) { console.error(e); toast('들어가지 못했어요. 초대번호를 다시 확인해 주세요.'); return; }
+  lsSet('gongu-store', sid); toast(`${inv.data().storeName || '장부'}에 들어왔어요.`);
+  S.joining = false; await loadStores();
+  } finally { S.joining = false; }
 }
 async function createStore(name) {
   const ref = await fsdb.collection('stores').add({ name, members: [myEmail()], ownerUid: S.user.uid, owners: [], createdAt: Date.now() });
@@ -699,7 +732,12 @@ function renderGate() {
       <div class="pname" style="font-size:24px">공구장부</div>
       <div style="font-size:17px">카톡 공구 주문을 손님 번호별로 정리하고<br>입금·수령을 함께 관리해요.</div>
       <button class="bigbtn" data-act="login">구글 계정으로 시작하기</button>
-      <div class="small muted">사장님이 초대한 구글 계정으로 로그인하면 같은 장부가 보여요.</div>
+      <hr style="border:0;border-top:1px solid var(--line);width:100%;margin:4px 0">
+      <div style="font-size:17px;font-weight:700">초대번호가 있으신가요?</div>
+      <input class="pick-in" id="joinCode" inputmode="numeric" maxlength="7" autocomplete="off" placeholder="초대번호 6자리">
+      <label class="field" style="text-align:left">이름 (장부에 보일 이름)<input id="joinName" value="사장님"></label>
+      <button class="bigbtn" style="background:var(--ok)" data-act="join">초대번호로 들어가기</button>
+      <div class="small muted">초대번호는 장부를 쓰는 사람이 '함께 쓰는 사람'에서 만들어 줄 수 있어요.</div>
       ${S.pendingShare ? '<div class="ai">카톡에서 보낸 대화가 기다리고 있어요. 로그인하면 바로 정리할게요.</div>' : ''}
     </section>`;
     return;
@@ -1346,17 +1384,20 @@ const isStandalone = () => matchMedia('(display-mode: standalone)').matches || n
 const appLink = () => location.origin + location.pathname.replace(/index\.html$/, '');
 
 function membersCard() {
-  const members = (S.store && S.store.members) || [];
+  const st = S.store || {}; const members = st.members || []; const uids = st.memberUids || []; const names = st.memberNames || {};
+  const row = (label, me, act, v) => `<div class="row" style="padding:8px 0;border-top:1px solid var(--line)"><span class="grow" style="overflow-wrap:anywhere">${label}${me ? ' <span class="chip acc">나</span>' : ''}</span>${me ? '' : `<button class="btn sm warn" data-act="${act}" data-v="${esc(v)}">빼기</button>`}</div>`;
   return `<section class="card" style="display:grid;gap:10px">
     <b>함께 쓰는 사람</b>
-    <div class="sheetlist">${members.map(m => `<div class="row" style="padding:8px 0;border-top:1px solid var(--line)"><span class="grow" style="overflow-wrap:anywhere">${esc(m)}${m === myEmail() ? ' <span class="chip acc">나</span>' : ''}</span>${m !== myEmail() ? `<button class="btn sm warn" data-act="uninvite" data-v="${esc(m)}">빼기</button>` : ''}</div>`).join('')}</div>
-    <label class="field">초대할 사람의 구글 이메일<input id="invEmail" type="email" inputmode="email" autocomplete="off" placeholder="example@gmail.com"></label>
-    <button class="btn pri" data-act="invite">초대하기</button>
-    <div class="small muted">초대한 다음 앱 주소를 카톡으로 보내 주세요. 그 이메일로 로그인하면 같은 장부가 보여요.</div>
+    <div class="sheetlist">${members.map(m => row(esc(m), !isAnon() && m === myEmail(), 'uninvite', m)).join('')}${uids.map(u => row('📱 ' + esc(names[u] || '초대번호 기기'), isAnon() && u === S.user.uid, 'uninviteUid', u)).join('')}</div>
+    <div class="ai"><b>사장님처럼 구글 로그인이 어려운 분</b>은 초대번호로 들어오면 돼요. 번호는 24시간 동안 쓸 수 있어요.</div>
+    ${S.code ? `<div style="text-align:center;font-size:40px;font-weight:800;letter-spacing:.15em;color:var(--accent)">${esc(S.code)}</div><button class="btn" data-act="copyCode">초대번호와 앱 주소 복사</button>` : '<button class="bigbtn" data-act="makeCode">초대번호 만들기</button>'}
+    <details><summary>구글 이메일로 초대하기</summary><div style="display:grid;gap:8px;margin-top:8px">
+      <label class="field">초대할 사람의 구글 이메일<input id="invEmail" type="email" inputmode="email" autocomplete="off" placeholder="example@gmail.com"></label>
+      <button class="btn pri" data-act="invite">초대하기</button></div></details>
     <button class="btn" data-act="copyLink">앱 주소 복사</button>
     ${S.stores.length > 1 ? `<label class="field">다른 장부 열기<select id="storeSel">${S.stores.map(s => `<option value="${esc(s.id)}" ${S.store && s.id === S.store.id ? 'selected' : ''}>${esc(s.name || s.id)}</option>`).join('')}</select></label><button class="btn" data-act="switchStore">이 장부 열기</button>` : ''}
     ${installEvt && !isStandalone() ? '<button class="bigbtn" data-act="install">휴대폰에 앱 설치</button>' : ''}
-    <button class="btn ghost" data-act="logout">로그아웃 (${esc(myEmail())})</button>
+    ${isAnon() ? '<button class="btn ghost" data-act="logout">이 기기 로그아웃 (다시 들어오려면 새 초대번호 필요)</button>' : `<button class="btn ghost" data-act="logout">로그아웃 (${esc(myEmail())})</button>`}
   </section>`;
 }
 
@@ -1365,7 +1406,11 @@ document.addEventListener('click', async ev => {
   const a = el.dataset.act;
   try {
     if (a === 'login') login();
-    else if (a === 'logout') { await firebase.auth().signOut(); }
+    else if (a === 'join') { el.disabled = true; try { await joinWithCode(document.getElementById('joinCode').value, document.getElementById('joinName').value.trim()); } finally { el.disabled = false; } }
+    else if (a === 'makeCode') { el.disabled = true; S.code = await makeCode(); render(); }
+    else if (a === 'copyCode') copyText(`📒 공구장부 초대번호: ${S.code}\n1) 크롬에서 ${appLink()} 열기\n2) 초대번호 넣고 '초대번호로 들어가기'\n(24시간 안에 넣어 주세요)`);
+    else if (a === 'uninviteUid') { if (el.dataset.sure) { await storeRef.update({ memberUids: firebase.firestore.FieldValue.arrayRemove(el.dataset.v), ['memberNames.' + el.dataset.v]: firebase.firestore.FieldValue.delete() }); toast('뺐어요.'); } else { el.dataset.sure = '1'; el.textContent = '정말 빼기'; } }
+    else if (a === 'logout') { if (isAnon() && !el.dataset.sure) { el.dataset.sure = '1'; el.textContent = '정말 로그아웃 (새 초대번호가 있어야 다시 들어와요)'; return; } S.code = ''; await firebase.auth().signOut(); }
     else if (a === 'reload') loadStores();
     else if (a === 'copyEmail') copyText(myEmail());
     else if (a === 'copyLink') copyText(appLink());
