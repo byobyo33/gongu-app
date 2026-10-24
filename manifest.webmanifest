@@ -45,7 +45,8 @@
             ".txt",
             "application/octet-stream",
             "application/zip",
-            ".zip"
+            ".zip",
+            "*/*"
           ]
         }
       ]
