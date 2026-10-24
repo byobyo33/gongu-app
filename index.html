@@ -960,7 +960,7 @@ function viewImport() {
   return `
     <section class="card" style="display:grid;gap:12px">
       <div><div class="pname">대화 가져오기</div><div class="small muted">같은 대화를 여러 번 올려도 이미 들어온 주문은 건너뛰니, 매번 전체를 내보내서 올려도 괜찮아요.</div></div>
-      <label class="drop" id="drop" for="file"><b>카톡 대화 txt 파일 선택</b><br><span class="small muted">여기로 끌어 놓아도 돼요 · 안드로이드, 아이폰, PC 형식 모두 읽어요</span><input id="file" type="file" accept=".txt,text/plain" hidden></label>
+      <label class="drop" id="drop" for="file"><b>카톡 대화 txt 파일 선택</b><br><span class="small muted">여기로 끌어 놓아도 돼요 · 안드로이드, 아이폰, PC 형식 모두 읽어요</span><input id="file" type="file" accept=".txt,.zip,text/plain,application/zip" hidden></label>
       <details><summary>또는 대화 내용 붙여넣기</summary><div style="display:grid;gap:8px;margin-top:8px"><textarea class="paste" id="paste" placeholder="카톡에서 메시지를 길게 눌러 복사한 내용이나 내보낸 txt 내용을 붙여넣으세요"></textarea><button class="btn" data-act="analyzePaste">붙여넣은 내용 분석</button></div></details>
     </section>
     ${A ? `<section class="card" style="display:grid;gap:12px">
@@ -998,7 +998,7 @@ function viewImport() {
 function wireImport() {
   const f = document.getElementById('file'), drop = document.getElementById('drop');
   if (!f) return;
-  const read = file => { const r = new FileReader(); r.onload = () => { let txt = r.result; if (/\uFFFD/.test(txt.slice(0, 500))) { const r2 = new FileReader(); r2.onload = () => runAnalyze(r2.result); r2.readAsText(file, 'euc-kr'); } else runAnalyze(txt); }; r.readAsText(file, 'utf-8'); };
+  const read = file => readChatFile(file).then(t => t.trim() ? runAnalyze(t) : toast('파일에서 대화를 찾지 못했어요.')).catch(() => toast('파일을 읽지 못했어요.'));
   f.onchange = () => f.files[0] && read(f.files[0]);
   drop.ondragover = e => { e.preventDefault(); drop.classList.add('over'); };
   drop.ondragleave = () => drop.classList.remove('over');
@@ -1421,6 +1421,40 @@ document.addEventListener('click', async ev => {
     else if (a === 'install' && installEvt) { installEvt.prompt(); await installEvt.userChoice; installEvt = null; render(); }
   } catch (e) { console.error(e); toast(e && e.code === 'permission-denied' ? '권한이 없어요.' : '처리하지 못했어요. 다시 시도해 주세요.'); }
 });
+
+// 파일 선택으로 올린 카톡 txt·zip 읽기
+function decode(buf) {
+  let t = new TextDecoder('utf-8').decode(buf);
+  if (/�/.test(t.slice(0, 2000))) { try { t = new TextDecoder('euc-kr').decode(buf); } catch (e) {} }
+  return t.replace(/^﻿/, '');
+}
+async function readChatFile(file) {
+  const buf = new Uint8Array(await file.arrayBuffer());
+  if (buf[0] === 0x50 && buf[1] === 0x4b) return (await unzipTexts(buf)).join('\n');
+  return decode(buf);
+}
+// 간단한 zip 읽기: .txt 항목만 (저장/deflate)
+async function unzipTexts(u8) {
+  const dv = new DataView(u8.buffer, u8.byteOffset, u8.byteLength); const out = [];
+  let eocd = -1; for (let i = u8.length - 22; i >= Math.max(0, u8.length - 65557); i--) if (dv.getUint32(i, true) === 0x06054b50) { eocd = i; break; }
+  if (eocd < 0) return out;
+  let p = dv.getUint32(eocd + 16, true); const n = dv.getUint16(eocd + 10, true);
+  for (let k = 0; k < n; k++) {
+    if (dv.getUint32(p, true) !== 0x02014b50) break;
+    const method = dv.getUint16(p + 10, true), csize = dv.getUint32(p + 20, true);
+    const nlen = dv.getUint16(p + 28, true), xlen = dv.getUint16(p + 30, true), clen = dv.getUint16(p + 32, true), lho = dv.getUint32(p + 42, true);
+    const name = new TextDecoder().decode(u8.subarray(p + 46, p + 46 + nlen));
+    p += 46 + nlen + xlen + clen;
+    if (!/\.txt$/i.test(name)) continue;
+    const start = lho + 30 + dv.getUint16(lho + 26, true) + dv.getUint16(lho + 28, true);
+    const data = u8.subarray(start, start + csize);
+    try {
+      const raw = method === 0 ? data : new Uint8Array(await new Response(new Blob([data]).stream().pipeThrough(new DecompressionStream('deflate-raw'))).arrayBuffer());
+      out.push(decode(raw));
+    } catch (e) {}
+  }
+  return out;
+}
 
 if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(() => {});
 
